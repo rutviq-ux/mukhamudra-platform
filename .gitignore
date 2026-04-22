@@ -42,3 +42,4 @@ postgres_data
 ghost_db_data
 ghost_content
 listmonk_db_data
+secrets/
