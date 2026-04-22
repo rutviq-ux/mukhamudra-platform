@@ -1,0 +1,49 @@
+{
+  "name": "mukha-mudra-platform",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@ru/web",
+    "dev:wa-bot": "turbo run dev --filter=@ru/wa-bot",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "db:generate": "turbo run db:generate --filter=@ru/db",
+    "db:push": "turbo run db:push --filter=@ru/db",
+    "db:migrate": "pnpm --filter @ru/db db:migrate",
+    "db:migrate:deploy": "pnpm --filter @ru/db db:migrate:deploy",
+    "db:migrate:status": "pnpm --filter @ru/db db:migrate:status",
+    "db:seed": "pnpm --filter @ru/scripts seed",
+    "razorpay:create-plans": "pnpm --filter @ru/scripts create-razorpay-plans",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "clean": "turbo run clean && node -e \"const fs = require('fs'); try { fs.rmSync('node_modules', { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch (err) { console.warn('clean: unable to remove node_modules:', err.message); }\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@playwright/test": "^1.51.0",
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "jsdom": "^24.0.0",
+    "prettier": "^3.4.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ]
+  },
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

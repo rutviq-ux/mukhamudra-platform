@@ -1,0 +1,100 @@
+{
+  "common": {
+    "appName": "Mukha Mudra",
+    "tagline": "Face yoga & breathwork with Rutviq.",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "search": "Search",
+    "noResults": "No results found",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out"
+  },
+  "nav": {
+    "home": "Home",
+    "faceYoga": "Face Yoga",
+    "pranayama": "Pranayama",
+    "blog": "Blog",
+    "dashboard": "Dashboard",
+    "schedule": "Schedule",
+    "billing": "Billing",
+    "profile": "Profile",
+    "admin": "Admin"
+  },
+  "hero": {
+    "badge": "Mukha Mudra",
+    "title": "Mukha Mudra",
+    "subtitle": "Face yoga & classical breathwork with Rutviq.",
+    "cta": "Start Pranayama",
+    "secondaryCta": "Book Face Yoga"
+  },
+  "services": {
+    "title": "How Rutviq works with you",
+    "faceYoga": {
+      "title": "Face Yoga",
+      "description": "Live group sessions with Rutviq 3x/week. 7 techniques including Face Yoga, Gua Sha, Roller, Trataka, and more."
+    },
+    "pranayama": {
+      "title": "Pranayama",
+      "description": "Live group breathwork led by Rutviq every morning and evening. Reduce stress, sharpen focus, and build a daily ritual that sticks."
+    }
+  },
+  "booking": {
+    "title": "Book Your Session",
+    "selectDate": "Select a date",
+    "selectTime": "Select a time",
+    "confirmBooking": "Confirm Booking",
+    "cancelBooking": "Cancel Booking",
+    "noSessions": "No available sessions",
+    "subscriptionStatus": "Subscription status",
+    "bookingConfirmed": "You're booked. See you on the mat.",
+    "bookingCancelled": "Booking cancelled"
+  },
+  "membership": {
+    "title": "Membership",
+    "active": "Active",
+    "cancelled": "Cancelled",
+    "expired": "Expired",
+    "cancelMembership": "Cancel Membership",
+    "renewsOn": "Renews on {date}",
+    "expiresOn": "Expires on {date}"
+  },
+  "breathing": {
+    "title": "Try it right now",
+    "subtitle": "One breath cycle. Follow the rhythm.",
+    "start": "Start breathing",
+    "pause": "Pause",
+    "inhale": "Inhale",
+    "hold": "Hold",
+    "exhale": "Exhale"
+  },
+  "newsletter": {
+    "title": "Rutviq's weekly notes",
+    "description": "Short, useful notes on face yoga, breathwork, and building a practice that lasts. Straight from Rutviq, every Thursday.",
+    "placeholder": "Your email address",
+    "subscribe": "Subscribe",
+    "consent": "I agree to receive emails",
+    "success": "You're in. Check your inbox to confirm."
+  },
+  "auth": {
+    "signInTitle": "Welcome back",
+    "signUpTitle": "Join Mukha Mudra",
+    "forgotPassword": "Forgot password?",
+    "orContinueWith": "Or continue with"
+  },
+  "errors": {
+    "unauthorized": "Please sign in to continue",
+    "notFound": "Page not found",
+    "serverError": "Something went wrong. We've been notified.",
+    "networkError": "Connection issue. Check your internet and try again."
+  }
+}

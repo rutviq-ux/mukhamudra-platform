@@ -1,0 +1,20 @@
+[app]
+address = "0.0.0.0:9000"
+admin_username = "admin"
+
+[db]
+host = "mm-listmonk-db.internal"
+port = 5432
+user = "mm_listmonk"
+password = "X6B9UDCaM7nDNG1"
+database = "mm_listmonk"
+ssl_mode = "disable"
+max_open = 25
+max_idle = 25
+max_lifetime = "300s"
+
+[privacy]
+individual_tracking = true
+allow_blocklist = true
+allow_export = true
+allow_wipe = true

@@ -1,0 +1,27 @@
+app = "mm-ghost"
+primary_region = "bom"
+
+[build]
+  image = "ghost:5-alpine"
+
+[env]
+  NODE_ENV = "production"
+  url = "https://ghost.mukhamudra.com"
+  database__client = "sqlite3"
+  database__connection__filename = "/var/lib/ghost/content/data/ghost.db"
+  database__useNullAsDefault = "true"
+  server__host = "0.0.0.0"
+  server__port = "2368"
+
+[http_service]
+  internal_port = 2368
+  force_https = true
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+[[mounts]]
+  source = "ghost_content"
+  destination = "/var/lib/ghost/content"
+  initial_size = "2gb"

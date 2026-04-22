@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
+  "sisyphus_agent": {
+    "disabled": false,
+    "default_builder_enabled": false,
+    "planner_enabled": true,
+    "replace_plan": true
+  },
+  "agents": {
+    "sisyphus": {
+      "model": "antigravity-claude-opus-4-5-thinking"
+    },
+    "hephaestus": {
+      "model": "antigravity-claude-sonnet-4-5-thinking"
+    },
+    "prometheus": {
+      "model": "antigravity-opus-sonnet-4-5-thinking"
+    },
+    "sisyphus-junior": {
+      "model": "antigravity-claude-sonnet-4-5-thinking"
+    },
+    "metis": {
+      "model": "google/antigravity-gemini-3-pro"
+    },
+    "oracle": {
+      "model": "google/antigravity-gemini-3-pro"
+    },
+    "explore": {
+      "model": "opencode/glm-4.7"
+    },
+    "code": {
+      "model": "google/antigravity-gemini-3-pro"
+    },
+    "debug": {
+      "model": "google/antigravity-gemini-3-pro"
+    },
+    "architect": {
+      "model": "google/antigravity-gemini-3-pro"
+    }
+  }
+}

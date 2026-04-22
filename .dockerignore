@@ -1,0 +1,22 @@
+# Ignore heavy/unnecessary dirs for Docker builds
+node_modules
+.next
+dist
+.turbo
+.git
+.github
+.vscode
+.claude
+.serena
+.playwright-mcp
+*.log
+*.tsbuildinfo
+
+# Apps not needed for wa-bot build
+apps/web/.next
+apps/web/node_modules
+apps-infra
+tooling
+fly
+docs
+secrets

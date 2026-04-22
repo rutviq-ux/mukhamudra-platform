@@ -1,0 +1,27 @@
+{
+  "name": "@ru/notifications",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./providers/*": "./dist/providers/*"
+  },
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "type-check": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ru/config": "workspace:*",
+    "@ru/db": "workspace:*",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/web-push": "^3.6.4",
+    "typescript": "^5.7.0"
+  }
+}

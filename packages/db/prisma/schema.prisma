@@ -1,0 +1,808 @@
+// Prisma Schema for Yoga Platform
+// Database: PostgreSQL
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTH
+// ============================================
+
+enum UserRole {
+  USER
+  ADMIN
+  OPS
+  COACH
+}
+
+model User {
+  id              String    @id @default(cuid())
+  clerkId         String?   @unique // Clerk user ID
+  email           String    @unique
+  phone           String?   @unique
+  name            String?
+  avatarUrl       String?
+  role            UserRole  @default(USER)
+  goal            String?   // "face-yoga" | "pranayama" | "both"
+  onboardedAt     DateTime? // null = not onboarded yet
+  termsAcceptedAt DateTime? // when user accepted T&C during onboarding
+  timezone        String    @default("Asia/Kolkata")
+  marketingOptIn  Boolean   @default(false)
+  whatsappOptIn   Boolean   @default(false)
+  pushOptIn       Boolean   @default(false)
+  coachModalities String[]  // Modalities this coach can teach (only relevant for COACH role)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  orders          Order[]
+  memberships     Membership[]
+  bookings        Booking[]
+  attendances     Attendance[]
+  progressMedia   ProgressMedia[]
+  messageLogs     MessageLog[]
+  auditLogs       AuditLog[]
+  courseProgress   UserCourseProgress[]
+  coachedSessions      Session[]              @relation("SessionCoach")
+  recordingAccess      RecordingAccess[]
+  pushSubscriptions    PushSubscription[]
+  sequenceEnrollments  SequenceEnrollment[]
+  createdBroadcasts    Broadcast[]            @relation("BroadcastCreator")
+
+  @@index([clerkId])
+  @@index([email])
+  @@index([phone])
+}
+
+// ============================================
+// PRODUCTS & PLANS
+// ============================================
+
+enum ProductType {
+  FACE_YOGA
+  PRANAYAMA
+  BUNDLE // Face Yoga + Pranayama combo
+}
+
+enum PlanInterval {
+  MONTHLY
+  ANNUAL
+}
+
+enum PlanType {
+  ONE_TIME      // For one-time purchases (e.g., recording add-on)
+  SUBSCRIPTION
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  type        ProductType @unique
+  name        String
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  plans       Plan[]
+  batches     Batch[]
+  sessions    Session[]
+}
+
+model Plan {
+  id                  String    @id @default(cuid())
+  productId           String
+  name                String    // e.g., "Single Session", "Pack of 4", "Monthly Autopay"
+  slug                String    @unique
+  type                PlanType
+  amountPaise         Int       // Price in paise (1 INR = 100 paise)
+  durationDays        Int?      // For subscriptions: billing cycle in days
+  razorpayPlanId      String?   // For subscriptions: Razorpay plan ID
+  description         String?
+  features            String[]  // List of features
+  isPopular           Boolean   @default(false)
+  isActive            Boolean   @default(true)
+  interval            PlanInterval? // MONTHLY or ANNUAL (null for legacy ONE_TIME/PACK)
+  sortOrder           Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  product             Product   @relation(fields: [productId], references: [id])
+  orders              Order[]
+  memberships         Membership[]
+
+  @@index([productId])
+  @@index([slug])
+}
+
+// ============================================
+// ORDERS & PAYMENTS (One-time)
+// ============================================
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Order {
+  id                  String      @id @default(cuid())
+  userId              String
+  planId              String
+  razorpayOrderId     String      @unique
+  razorpayPaymentId   String?
+  status              OrderStatus @default(PENDING)
+  amountPaise         Int
+  currency            String      @default("INR")
+  couponId            String?
+  discountPaise       Int         @default(0)
+  metadata            Json?       // Additional payment metadata
+  paidAt              DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  // Relations
+  user                User        @relation(fields: [userId], references: [id])
+  plan                Plan        @relation(fields: [planId], references: [id])
+  coupon              Coupon?     @relation(fields: [couponId], references: [id])
+  recordingAccess     RecordingAccess[]
+
+  @@index([userId])
+  @@index([razorpayOrderId])
+  @@index([razorpayPaymentId])
+}
+
+// ============================================
+// MEMBERSHIPS & SUBSCRIPTIONS
+// ============================================
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+model Membership {
+  id                      String            @id @default(cuid())
+  userId                  String
+  planId                  String
+  razorpaySubscriptionId  String?           @unique // One membership per Razorpay subscription
+  status                  MembershipStatus  @default(PENDING)
+  periodStart             DateTime?
+  periodEnd               DateTime?
+  cancelledAt             DateTime?
+  pausedAt                DateTime?
+  metadata                Json?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  // Relations
+  user                    User              @relation(fields: [userId], references: [id])
+  plan                    Plan              @relation(fields: [planId], references: [id])
+
+  @@unique([userId, planId]) // One membership per plan per user
+  @@index([userId])
+  @@index([status])
+}
+
+// ============================================
+// BATCHES & SESSIONS
+// ============================================
+
+model Batch {
+  id            String    @id @default(cuid())
+  productId     String
+  name          String    // e.g., "Morning Batch", "Evening Batch"
+  slug          String    @unique
+  description   String?
+  daysOfWeek    Int[]     // 0=Sunday, 1=Monday, etc.
+  startTime     String    // HH:mm format in batch timezone
+  durationMin   Int       @default(60)
+  timezone      String    @default("Asia/Kolkata")
+  capacity      Int       @default(50)
+  modalities    String[]  // Flat superset of all techniques (auto-computed)
+  dayModalities Json?     // Per-day modalities: { "1": ["Gua Sha"], "3": ["Cupping"] }
+  endsAt        DateTime? // NULL = runs indefinitely
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  product       Product   @relation(fields: [productId], references: [id])
+  sessions      Session[]
+
+  @@index([productId])
+  @@index([slug])
+}
+
+enum SessionType {
+  GROUP
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Session {
+  id            String        @id @default(cuid())
+  productId     String
+  batchId       String?       // NULL for sessions not tied to a batch
+  type          SessionType   @default(GROUP)
+  status        SessionStatus @default(SCHEDULED)
+  title         String?
+  description   String?
+  modalities    String[]      // Techniques/focus areas for this specific session
+  startsAt      DateTime
+  endsAt        DateTime
+  joinUrl         String?       // Meeting link (Zoom, Google Meet, etc.)
+  calendarEventId String?       // Google Calendar event ID
+  meetingId       String?       // Google Meet conference ID (abc-defg-hij)
+  spaceName       String?       // Meet space resource name: spaces/{id} (for recording queries)
+  recordingUrl    String?       // Sharable recording link
+  capacity        Int           @default(50)
+  coachId         String?       // Coach conducting the session
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  product       Product       @relation(fields: [productId], references: [id])
+  batch         Batch?        @relation(fields: [batchId], references: [id])
+  coach         User?         @relation("SessionCoach", fields: [coachId], references: [id])
+  bookings      Booking[]
+  attendances   Attendance[]
+
+  @@index([productId])
+  @@index([batchId])
+  @@index([startsAt])
+  @@index([coachId])
+  @@index([calendarEventId])
+  @@index([spaceName])
+}
+
+// ============================================
+// BOOKINGS & ATTENDANCE
+// ============================================
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  userId          String
+  sessionId       String
+  status          BookingStatus @default(CONFIRMED)
+  notes           String?
+  cancelledAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  user            User          @relation(fields: [userId], references: [id])
+  session         Session       @relation(fields: [sessionId], references: [id])
+
+  @@unique([userId, sessionId])
+  @@index([userId])
+  @@index([sessionId])
+}
+
+model Attendance {
+  id          String    @id @default(cuid())
+  userId      String
+  sessionId   String
+  joinedAt    DateTime
+  leftAt      DateTime?
+  durationMin Int?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id])
+  session     Session   @relation(fields: [sessionId], references: [id])
+
+  @@unique([userId, sessionId])
+  @@index([userId])
+  @@index([sessionId])
+}
+
+
+// ============================================
+// AFFILIATE PRODUCTS
+// ============================================
+
+enum AffiliateCategory {
+  GUA_SHA
+  ROLLER
+  OIL
+  CREAM
+  BOOK
+  MAT
+  PROP
+  OTHER
+}
+
+model AffiliateProduct {
+  id            String            @id @default(cuid())
+  name          String
+  slug          String            @unique
+  description   String?           @db.Text
+  imageUrl      String
+  affiliateUrl  String            // Amazon affiliate link
+  displayPrice  String            // e.g. "₹1,299" — display only, not for calculations
+  category      AffiliateCategory
+  practiceTypes ProductType[]     // Reuse existing enum: FACE_YOGA, PRANAYAMA, BUNDLE
+  isFeatured    Boolean           @default(false)
+  isActive      Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  clickCount    Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([category])
+  @@index([isActive, sortOrder])
+}
+
+// ============================================
+// COUPONS
+// ============================================
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model Coupon {
+  id              String        @id @default(cuid())
+  code            String        @unique
+  discountType    DiscountType
+  discountValue   Int           // Percentage (0-100) or fixed amount in paise
+  minOrderPaise   Int?          // Minimum order amount
+  maxDiscountPaise Int?         // Max discount for percentage coupons
+  maxUses         Int?          // Total usage limit
+  usedCount       Int           @default(0)
+  validFrom       DateTime      @default(now())
+  validUntil      DateTime?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  orders          Order[]
+
+  @@index([code])
+}
+
+// ============================================
+// WEBHOOKS
+// ============================================
+
+enum WebhookEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+model WebhookEvent {
+  id              String              @id @default(cuid())
+  provider        String              @default("razorpay")
+  eventType       String
+  eventId         String              @unique // Provider's event ID for idempotency
+  payload         Json
+  status          WebhookEventStatus  @default(PENDING)
+  error           String?
+  processedAt     DateTime?
+  createdAt       DateTime            @default(now())
+
+  @@index([eventId])
+  @@index([eventType])
+  @@index([status])
+}
+
+// ============================================
+// PROGRESS MEDIA (Before/After/Weekly)
+// ============================================
+
+enum MediaType {
+  BEFORE
+  AFTER
+  WEEKLY
+}
+
+model ProgressMedia {
+  id          String    @id @default(cuid())
+  userId      String
+  type        MediaType
+  url         String
+  capturedAt  DateTime  @default(now())
+  notes       String?
+  weekNumber  Int?      // For WEEKLY type
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+}
+
+// ============================================
+// COURSES & EXERCISES
+// ============================================
+
+model Course {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  month       Int       // Month number (1-12) or sequence
+  year        Int?      // Year or NULL for recurring
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  exercises     CourseExercise[]
+  userProgress  UserCourseProgress[]
+
+  @@index([slug])
+}
+
+model Exercise {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  description     String?
+  instructions    String?   @db.Text
+  videoUrl        String?
+  thumbnailUrl    String?
+  durationSeconds Int?
+  difficulty      String?   // beginner, intermediate, advanced
+  targetArea      String?   // face, neck, etc.
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  courses         CourseExercise[]
+
+  @@index([slug])
+}
+
+model CourseExercise {
+  id          String    @id @default(cuid())
+  courseId    String
+  exerciseId  String
+  dayNumber   Int       // Day in the course/month
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  course      Course    @relation(fields: [courseId], references: [id])
+  exercise    Exercise  @relation(fields: [exerciseId], references: [id])
+
+  @@unique([courseId, exerciseId, dayNumber])
+  @@index([courseId])
+}
+
+model UserCourseProgress {
+  id              String    @id @default(cuid())
+  userId          String
+  courseId        String
+  completedDays   Int[]     // Array of completed day numbers
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id])
+  course          Course    @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+  @@index([userId])
+}
+
+// ============================================
+// MESSAGING & NOTIFICATIONS
+// ============================================
+
+enum MessageChannel {
+  EMAIL
+  WHATSAPP
+  INSTAGRAM // Auto-reply to user-initiated DMs via Meta Graph API
+  PUSH      // Browser push notifications via Web Push API
+}
+
+model MessageTemplate {
+  id          String          @id @default(cuid())
+  channel     MessageChannel
+  name        String          @unique // e.g., "session_reminder", "payment_failed"
+  subject     String?         // For emails
+  body        String          @db.Text
+  variables   String[]        // List of template variables
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relations
+  messageLogs    MessageLog[]
+  sequenceSteps  SequenceStep[]
+  broadcasts     Broadcast[]
+
+  @@index([channel])
+  @@index([name])
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model MessageLog {
+  id                      String          @id @default(cuid())
+  userId                  String?
+  channel                 MessageChannel
+  templateId              String?
+  to                      String          // Email or phone number
+  subject                 String?         // For emails
+  body                    String          @db.Text
+  status                  MessageStatus   @default(QUEUED)
+  providerMessageId       String?         // Provider's message ID
+  error                   String?
+  retryCount              Int             @default(0)
+  sequenceEnrollmentId    String?         // Trace message back to a sequence enrollment
+  broadcastId             String?         // Trace message back to a broadcast
+  sentAt                  DateTime?
+  deliveredAt             DateTime?
+  createdAt               DateTime        @default(now())
+
+  // Relations
+  user                User?                @relation(fields: [userId], references: [id])
+  template            MessageTemplate?     @relation(fields: [templateId], references: [id])
+  sequenceEnrollment  SequenceEnrollment?  @relation(fields: [sequenceEnrollmentId], references: [id])
+  broadcast           Broadcast?           @relation(fields: [broadcastId], references: [id])
+
+  @@index([userId])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
+  @@index([sequenceEnrollmentId])
+  @@index([broadcastId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique // Push endpoint URL (unique per browser)
+  p256dh    String            // Client public key
+  auth      String            // Auth secret
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============================================
+// AUDIT LOGGING (Admin Actions)
+// ============================================
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  actorId     String?
+  actorRole   UserRole?
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  actor       User?     @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Rate limiting bucket for WhatsApp
+model RateLimitBucket {
+  id          String    @id @default(cuid())
+  key         String    @unique // e.g., "whatsapp:user:123" or "whatsapp:global"
+  count       Int       @default(0)
+  windowStart DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([key])
+}
+
+// ============================================
+// SETTINGS
+// ============================================
+
+model Setting {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  value     Json
+  updatedAt DateTime  @updatedAt
+
+  @@index([key])
+}
+
+// ============================================
+// RECORDING ACCESS (Add-on for annual plans)
+// ============================================
+
+// ============================================
+// LEADS (trial gating)
+// ============================================
+
+model Lead {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String   // WhatsApp number
+  source    String   @default("trial") // where the lead came from
+  createdAt DateTime @default(now())
+
+  // Relations
+  sequenceEnrollments SequenceEnrollment[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+model RecordingAccess {
+  id          String    @id @default(cuid())
+  userId      String
+  orderId     String?   // Razorpay order for the add-on purchase
+  expiresAt   DateTime  // 1 year from purchase date
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id])
+  order       Order?    @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ============================================
+// SEQUENCES & AUTOMATION
+// ============================================
+
+model Sequence {
+  id            String    @id @default(cuid())
+  name          String                         // "Lead Follow-up", "Onboarding Drip"
+  slug          String    @unique
+  description   String?
+  triggerEvent  String                         // "lead.created", "user.onboarded", etc.
+  cancelEvents  String[]                       // ["user.onboarded", "subscription.activated"]
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  steps         SequenceStep[]
+  enrollments   SequenceEnrollment[]
+
+  @@index([triggerEvent])
+  @@index([isActive])
+}
+
+model SequenceStep {
+  id            String          @id @default(cuid())
+  sequenceId    String
+  templateId    String
+  stepOrder     Int                            // 1, 2, 3...
+  delayMinutes  Int             @default(0)    // Minutes after enrollment (absolute)
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  sequence      Sequence        @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  template      MessageTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([sequenceId, stepOrder])
+  @@index([sequenceId])
+}
+
+enum SequenceEnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model SequenceEnrollment {
+  id            String                      @id @default(cuid())
+  sequenceId    String
+  userId        String?
+  leadId        String?
+  status        SequenceEnrollmentStatus    @default(ACTIVE)
+  currentStep   Int                         @default(0) // Last completed step order (0 = not started)
+  lastStepAt    DateTime?
+  enrolledAt    DateTime                    @default(now())
+  completedAt   DateTime?
+  cancelledAt   DateTime?
+  cancelReason  String?
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+
+  // Relations
+  sequence      Sequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [userId], references: [id])
+  lead          Lead?     @relation(fields: [leadId], references: [id])
+  messageLogs   MessageLog[]
+
+  @@unique([sequenceId, userId])
+  @@unique([sequenceId, leadId])
+  @@index([sequenceId])
+  @@index([userId])
+  @@index([leadId])
+  @@index([status])
+  @@index([status, lastStepAt])
+}
+
+// ============================================
+// BROADCASTS (Bulk Send)
+// ============================================
+
+enum BroadcastStatus {
+  DRAFT
+  SENDING
+  COMPLETED
+  CANCELLED
+}
+
+model Broadcast {
+  id                String          @id @default(cuid())
+  name              String
+  templateId        String
+  variables         Json            @default("{}")  // Variable values for this broadcast
+  segment           Json                            // Filter criteria for recipients
+  status            BroadcastStatus @default(DRAFT)
+  totalRecipients   Int             @default(0)
+  sentCount         Int             @default(0)
+  failedCount       Int             @default(0)
+  scheduledFor      DateTime?                       // null = send when triggered
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdBy         String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  template          MessageTemplate @relation(fields: [templateId], references: [id])
+  creator           User            @relation("BroadcastCreator", fields: [createdBy], references: [id])
+  messageLogs       MessageLog[]
+
+  @@index([status])
+  @@index([createdBy])
+}

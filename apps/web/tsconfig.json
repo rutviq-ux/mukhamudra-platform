@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@ru/ui": ["../../packages/ui/src"],
+      "@ru/db": ["../../packages/db/src"],
+      "@ru/config": ["../../packages/config/src"],
+      "@ru/ghost-client": ["../../packages/ghost-client/src"],
+      "@ru/listmonk-client": ["../../packages/listmonk-client/src"],
+      "@ru/notifications": ["../../packages/notifications/src"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

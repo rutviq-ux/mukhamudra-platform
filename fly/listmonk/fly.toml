@@ -1,0 +1,29 @@
+app = "mm-listmonk"
+primary_region = "bom"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  TZ = "Asia/Kolkata"
+
+[http_service]
+  internal_port = 9000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+
+  [[http_service.checks]]
+    interval = "30s"
+    grace_period = "90s"
+    method = "GET"
+    path = "/"
+    timeout = "15s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[[mounts]]
+  source = "listmonk_uploads"
+  destination = "/listmonk/uploads"

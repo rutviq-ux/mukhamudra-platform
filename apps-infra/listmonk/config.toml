@@ -1,0 +1,26 @@
+[app]
+address = "0.0.0.0:9000"
+admin_username = "admin"
+admin_password = "admin_password_change_me"
+
+[db]
+host = "listmonk-db"
+port = 5432
+user = "listmonk"
+password = "listmonk_password"
+database = "listmonk"
+ssl_mode = "disable"
+max_open = 25
+max_idle = 25
+max_lifetime = "300s"
+
+[privacy]
+individual_tracking = true
+allow_blocklist = true
+allow_export = true
+allow_wipe = true
+exportable = ["profile", "subscriptions", "campaign_views", "link_clicks"]
+
+[appearance]
+logo_url = ""
+favicon_url = ""

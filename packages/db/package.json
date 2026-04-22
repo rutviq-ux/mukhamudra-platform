@@ -1,0 +1,32 @@
+{
+  "name": "@ru/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./client": "./dist/client.js"
+  },
+  "scripts": {
+    "db:generate": "dotenv -e ../../.env -- prisma generate",
+    "db:generate:ci": "prisma generate",
+    "db:push": "dotenv -e ../../.env -- prisma db push",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "dotenv -e ../../.env -- prisma migrate status",
+    "db:studio": "dotenv -e ../../.env -- prisma studio",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "type-check": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.0"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^7.4.0",
+    "prisma": "^6.2.0",
+    "typescript": "^5.7.0"
+  }
+}

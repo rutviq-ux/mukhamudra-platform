@@ -1,0 +1,1100 @@
+/* Tailwind CSS v4 - Mukha Mudra Theme */
+/* "Warm Editorial" — Textured, contemplative, emerald + gold + crimson */
+
+@import "tailwindcss";
+
+/* ============================================
+   CUSTOM THEME TOKENS
+   ============================================ */
+
+@theme {
+  /* Color Palette - Warm espresso-black base with emerald + gold + crimson */
+  --color-background: #0B1F1A;
+  --color-foreground: #F0E8D8;
+
+  /* Card/Surface colors — lifted warm surface */
+  --color-card: #112420;
+  --color-card-foreground: #F0E8D8;
+
+  /* Muted backgrounds — warmer base */
+  --color-muted: #1A2E28;
+  --color-muted-foreground: #9BBAB0;
+
+  /* Primary - Rich emerald */
+  --color-primary: #2E9E86;
+  --color-primary-hover: #3EB098;
+  --color-primary-foreground: #F0E8D8;
+
+  /* Accent - Burnished gold */
+  --color-accent: #C4883A;
+  --color-accent-hover: #D4A054;
+  --color-accent-foreground: #F0E8D8;
+
+  /* Secondary */
+  --color-secondary: #2C2418;
+  --color-secondary-foreground: #B5A998;
+
+  /* Destructive - Crimson */
+  --color-destructive: #C8302C;
+  --color-destructive-foreground: #F0E8D8;
+
+  /* Border - Craquelure at 12% */
+  --color-border: rgba(46, 158, 134, 0.12);
+  --color-input: #2C2418;
+  --color-ring: rgba(46, 158, 134, 0.4);
+
+  /* Success/Warning/Info */
+  --color-success: #2E9E86;
+  --color-warning: #D4A054;
+  --color-info: #C4883A;
+
+  /* Brand accents */
+  --color-heading-gold: #D4A054;
+  --color-mm-gold: #C4883A;
+  --color-mm-emerald: #2E9E86;
+  --color-mm-vermillion: #C8302C;
+  --color-mm-ivory: #F0E8D8;
+  --color-mm-craquelure: #6BB8A6;
+  --color-surface: #112420;
+  --color-elevated: #163028;
+  --color-ink: #F0E8D8;
+
+  /* Spacing */
+  --mm-spacing-xs: 0.25rem;
+  --mm-spacing-sm: 0.5rem;
+  --mm-spacing-md: 1rem;
+  --mm-spacing-lg: 1.5rem;
+  --mm-spacing-xl: 2rem;
+  --mm-spacing-2xl: 3rem;
+  --mm-spacing-3xl: 4rem;
+  --mm-spacing-4xl: 12rem;
+
+  /* Border Radius - Sharp, editorial */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-sans:
+    var(--font-body), "DM Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-serif:
+    var(--font-display), "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-devanagari: "Noto Sans Devanagari", sans-serif;
+
+  /* Font sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+  --text-5xl: 3.5rem;
+  --text-6xl: 4.5rem;
+
+  /* Line heights */
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.75;
+
+  /* Shadows - Glow-based for dark backgrounds */
+  --shadow-sm: 0 0 15px rgba(46, 158, 134, 0.08);
+  --shadow-md: 0 0 30px rgba(46, 158, 134, 0.12);
+  --shadow-lg: 0 0 60px rgba(46, 158, 134, 0.18);
+  --shadow-card:
+    0 1px 0 rgba(200, 191, 168, 0.06),
+    0 0 30px rgba(196, 136, 58, 0.06),
+    inset 0 1px 0 rgba(200, 191, 168, 0.04);
+
+  /* Transitions - Slower, contemplative */
+  --transition-fast: 250ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-normal: 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-slow: 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-reveal: 1200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================
+   LIGHT THEME OVERRIDES
+   ============================================ */
+
+html.light {
+  /* Background — warm parchment */
+  --color-background: #F5EFE3;
+  --color-foreground: #1A1208;
+
+  /* Card/Surface — warm white, not clinical */
+  --color-card: #FFFDF8;
+  --color-card-foreground: #1A1208;
+
+  /* Muted — slightly dusty parchment */
+  --color-muted: #EBE4D6;
+  --color-muted-foreground: #5C5347;
+
+  /* Primary — emerald deepened for light-bg legibility */
+  --color-primary: #268A74;
+  --color-primary-hover: #1F7A66;
+  --color-primary-foreground: #FFFDF8;
+
+  /* Accent — gold deepened */
+  --color-accent: #B07A2E;
+  --color-accent-hover: #9A6B24;
+  --color-accent-foreground: #FFFDF8;
+
+  /* Secondary */
+  --color-secondary: #EBE4D6;
+  --color-secondary-foreground: #5C5347;
+
+  /* Destructive — crimson */
+  --color-destructive: #B82A20;
+  --color-destructive-foreground: #FFFDF8;
+
+  /* Border — warm sepia tint */
+  --color-border: rgba(26, 18, 8, 0.10);
+  --color-input: #EBE4D6;
+  --color-ring: rgba(38, 138, 116, 0.45);
+
+  /* Success/Warning/Info */
+  --color-success: #268A74;
+  --color-warning: #C4943A;
+  --color-info: #B07A2E;
+
+  /* Surfaces */
+  --color-surface: #FFFDF8;
+  --color-elevated: #F0E9DB;
+  --color-ink: #1A1208;
+
+  /* Shadows — warm drop + ambient haze (editorial, not flat) */
+  --shadow-sm:
+    0 1px 2px rgba(26, 18, 8, 0.06),
+    0 0 8px rgba(46, 158, 134, 0.04);
+  --shadow-md:
+    0 2px 6px rgba(26, 18, 8, 0.08),
+    0 0 16px rgba(46, 158, 134, 0.05);
+  --shadow-lg:
+    0 4px 16px rgba(26, 18, 8, 0.10),
+    0 0 32px rgba(46, 158, 134, 0.06);
+  --shadow-card:
+    0 1px 3px rgba(26, 18, 8, 0.06),
+    0 0 12px rgba(46, 158, 134, 0.04),
+    0 0 0 1px rgba(26, 18, 8, 0.03);
+}
+
+/* ============================================
+   BASE STYLES
+   Wrapped in @layer base so Tailwind utilities
+   (in @layer utilities) properly override them.
+   ============================================ */
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-background);    background-image:      /* Silk sheen — diagonal luster */      linear-gradient(        135deg,        rgba(46, 158, 134, 0.03) 0%,        rgba(46, 158, 134, 0.06) 25%,        rgba(46, 158, 134, 0.02) 50%,        rgba(46, 158, 134, 0.07) 75%,        rgba(46, 158, 134, 0.03) 100%      ),      /* Fine weave — horizontal silk threads */      repeating-linear-gradient(        0deg,        transparent,        transparent 3px,        rgba(46, 158, 134, 0.015) 3px,        rgba(46, 158, 134, 0.015) 4px      ),      /* Vertical cross-weave */      repeating-linear-gradient(        90deg,        transparent,        transparent 5px,        rgba(46, 158, 134, 0.01) 5px,        rgba(46, 158, 134, 0.01) 6px      ),      /* Light pooling — radial luminance */      radial-gradient(        ellipse at 30% 20%,        rgba(46, 158, 134, 0.08) 0%,        transparent 50%      ),      radial-gradient(        ellipse at 70% 80%,        rgba(46, 158, 134, 0.05) 0%,        transparent 50%      );    background-attachment: fixed;
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.005em;
+    transition:
+      background-color 600ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+html.light body {    background-image:      /* Parchment sheen — warm diagonal luster */      linear-gradient(        170deg,        rgba(212, 160, 84, 0.06) 0%,        rgba(212, 160, 84, 0.03) 30%,        rgba(212, 160, 84, 0.08) 60%,        rgba(212, 160, 84, 0.04) 100%      ),      /* Fine linen weave — horizontal threads */      repeating-linear-gradient(        0deg,        transparent,        transparent 3px,        rgba(26, 18, 8, 0.012) 3px,        rgba(26, 18, 8, 0.012) 4px      ),      /* Vertical cross-weave */      repeating-linear-gradient(        90deg,        transparent,        transparent 5px,        rgba(26, 18, 8, 0.008) 5px,        rgba(26, 18, 8, 0.008) 6px      ),      /* Warm light pooling — like sunlight on paper */      radial-gradient(        ellipse at 25% 15%,        rgba(212, 160, 84, 0.10) 0%,        transparent 50%      ),      radial-gradient(        ellipse at 75% 85%,        rgba(212, 160, 84, 0.06) 0%,        transparent 50%      );    background-attachment: fixed;  }
+
+  /* Elegant headings with serif */
+  h1,
+  h2,
+  h3 {
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: var(--leading-tight);
+  }
+}
+
+/* ============================================
+   CARD STYLES
+   ============================================ */
+
+.void-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
+}
+
+.void-card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  box-shadow: var(--shadow-lg);
+}
+
+
+
+
+.craquelure-border {
+  position: relative;
+}
+
+.craquelure-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-border);
+  border-radius: inherit;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 12px,
+    rgba(200, 191, 168, 0.03) 12px,
+    rgba(200, 191, 168, 0.03) 13px
+  );
+}
+
+html.light .craquelure-border::before {
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 12px,
+    rgba(26, 18, 8, 0.03) 12px,
+    rgba(26, 18, 8, 0.03) 13px
+  );
+}
+
+/* ============================================
+   PARCHMENT CARD — warm ivory for featured elements
+   ============================================ */
+
+.parchment-card {
+  background: linear-gradient(135deg, #F0E8D8 0%, #E8DEC8 50%, #DDD2BD 100%);
+  color: #1A1208;
+  border: 1px solid rgba(196, 136, 58, 0.2);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 2px 8px rgba(26, 18, 8, 0.15),
+    0 0 20px rgba(196, 136, 58, 0.05);
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
+}
+
+.parchment-card:hover {
+  border-color: rgba(196, 136, 58, 0.35);
+  box-shadow:
+    0 4px 16px rgba(26, 18, 8, 0.2),
+    0 0 30px rgba(196, 136, 58, 0.08);
+}
+
+/* Parchment card inner text overrides */
+.parchment-card .text-muted-foreground {
+  color: #5C5347;
+}
+
+.parchment-card .text-foreground {
+  color: #1A1208;
+}
+
+html.light .parchment-card {
+  background: linear-gradient(135deg, #FFFDF8 0%, #F5EFE3 50%, #EBE4D6 100%);
+  border-color: rgba(176, 122, 46, 0.15);
+  box-shadow:
+    0 2px 8px rgba(26, 18, 8, 0.08),
+    0 0 0 1px rgba(26, 18, 8, 0.03);
+}
+
+/* ============================================
+   GOLD FRAME — double gold border for images/cards
+   ============================================ */
+
+.gold-frame {
+  position: relative;
+}
+
+.gold-frame::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgba(196, 136, 58, 0.3);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gold-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(196, 136, 58, 0.15);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+
+html.light .gold-frame::before {
+  border-color: rgba(154, 107, 36, 0.2);
+}
+
+html.light .gold-frame::after {
+  border-color: rgba(154, 107, 36, 0.1);
+}
+
+/* ============================================
+   HEADING GOLD — warm gold serif headlines
+   ============================================ */
+
+.heading-gold {
+  color: var(--color-heading-gold);
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+html.light .heading-gold {
+  color: #9A6B24;
+}
+
+/* ============================================
+   AURA BACKGROUND — decorative gradient image
+   ============================================ */
+
+.aura-bg {
+  position: relative;
+}
+
+.aura-bg > .aura-bg__img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aura-bg > .aura-bg__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.06;
+  filter: blur(40px) saturate(1.2) hue-rotate(120deg);
+  mix-blend-mode: screen;
+}
+
+.aura-bg > *:not(.aura-bg__img):not([class*="absolute"]) {
+  position: relative;
+  z-index: 1;
+}
+
+html.light .aura-bg > .aura-bg__img img {
+  opacity: 0.04;
+  mix-blend-mode: multiply;
+}
+
+/* ============================================
+   TORN EDGES — jagged clip-path for section breaks
+   ============================================ */
+
+.torn-edge-top {
+  clip-path: polygon(
+    0% 3%, 4% 1%, 8% 2.5%, 12% 0.5%, 16% 2%, 20% 1.5%,
+    24% 3%, 28% 0.8%, 32% 2.2%, 36% 1%, 40% 2.8%, 44% 0.5%,
+    48% 2%, 52% 1.2%, 56% 3%, 60% 0.8%, 64% 2.5%, 68% 1.5%,
+    72% 2.8%, 76% 0.5%, 80% 2%, 84% 1%, 88% 3%, 92% 0.8%,
+    96% 2.2%, 100% 1%,
+    100% 100%, 0% 100%
+  );
+}
+
+.torn-edge-bottom {
+  clip-path: polygon(
+    0% 0%, 100% 0%,
+    100% 97%, 96% 99%, 92% 97.5%, 88% 99.5%, 84% 98%, 80% 98.5%,
+    76% 97%, 72% 99.2%, 68% 97.8%, 64% 99%, 60% 97.2%, 56% 99.5%,
+    52% 98%, 48% 98.8%, 44% 97%, 40% 99.2%, 36% 97.5%, 32% 98.5%,
+    28% 97.2%, 24% 99.5%, 20% 98%, 16% 99%, 12% 97%, 8% 98.8%,
+    4% 97.2%, 0% 99%
+  );
+}
+
+/* ============================================
+   GOLD SPARKLE — 4-pointed star decorative accent
+   ============================================ */
+
+.gold-sparkle {
+  position: relative;
+}
+
+.gold-sparkle::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  background: var(--color-mm-gold);
+  opacity: 0.4;
+  clip-path: polygon(
+    50% 0%, 60% 35%, 100% 50%, 60% 65%,
+    50% 100%, 40% 65%, 0% 50%, 40% 35%
+  );
+  pointer-events: none;
+}
+
+/* ============================================
+   BUTTON VARIANTS
+   ============================================ */
+
+.btn-primary {
+  background: linear-gradient(135deg, #7A5C20, #9A6B24);
+  color: #F5ECD4;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  transition: all 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #8A6C2A, #AA7B34);
+  box-shadow: 0 0 24px rgba(154, 107, 36, 0.3);
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, #7A5C20, #9A6B24);
+  color: #F5ECD4;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  transition: all 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.btn-gold:hover {
+  background: linear-gradient(135deg, #8A6C2A, #AA7B34);
+  box-shadow: 0 0 24px rgba(154, 107, 36, 0.3);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-muted-foreground);
+  border: none;
+  border-radius: 9999px;
+  transition: all 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.btn-ghost:hover {
+  color: var(--color-foreground);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, #7A5C20, #9A6B24);
+  color: #F5ECD4;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  transition: all 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.btn-accent:hover {
+  background: linear-gradient(135deg, #8A6C2A, #AA7B34);
+  box-shadow: 0 0 24px rgba(154, 107, 36, 0.3);
+}
+
+/* ============================================
+   TAG PILL
+   ============================================ */
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid rgba(196, 136, 58, 0.15);
+  font-size: 0.7rem;
+  font-variant: small-caps;
+  letter-spacing: 0.15em;
+  color: var(--color-accent);
+}
+
+/* ============================================
+   DECORATIVE ELEMENTS
+   ============================================ */
+
+.gold-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-mm-gold), transparent);
+  opacity: 0.3;
+}
+
+html.light .gold-rule {
+  opacity: 0.5;
+}
+
+.void-divider {
+  height: var(--mm-spacing-4xl);
+  background: var(--color-background);
+}
+
+.image-emerge {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: emerge-from-void var(--transition-reveal) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.text-overlay {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  mix-blend-mode: difference;
+}
+
+html.light .text-overlay {
+  mix-blend-mode: multiply;
+}
+
+/* ============================================
+   TYPOGRAPHY UTILITIES
+   ============================================ */
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.text-pretty {
+  text-wrap: pretty;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================
+   SCROLLBAR STYLING - Minimal
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(200, 191, 168, 0.2);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 191, 168, 0.35);
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(26, 18, 8, 0.15);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(26, 18, 8, 0.3);
+}
+
+/* ============================================
+   FOCUS STYLES - Accessible
+   ============================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   SELECTION
+   ============================================ */
+
+::selection {
+  background: rgba(196, 136, 58, 0.25);
+  color: var(--color-foreground);
+}
+
+html.light ::selection {
+  background: rgba(176, 122, 46, 0.2);
+}
+
+/* ============================================
+   PROSE LIGHT MODE — Reset prose-invert for light theme
+   ============================================ */
+
+html.light .prose-invert {
+  --tw-prose-body: var(--color-foreground);
+  --tw-prose-headings: var(--color-foreground);
+  --tw-prose-lead: var(--color-muted-foreground);
+  --tw-prose-links: var(--color-primary);
+  --tw-prose-bold: var(--color-foreground);
+  --tw-prose-counters: var(--color-muted-foreground);
+  --tw-prose-bullets: var(--color-muted-foreground);
+  --tw-prose-hr: var(--color-border);
+  --tw-prose-quotes: var(--color-foreground);
+  --tw-prose-quote-borders: var(--color-primary);
+  --tw-prose-captions: var(--color-muted-foreground);
+  --tw-prose-kbd: var(--color-foreground);
+  --tw-prose-kbd-shadows: var(--color-foreground);
+  --tw-prose-code: var(--color-accent);
+  --tw-prose-pre-code: var(--color-foreground);
+  --tw-prose-pre-bg: var(--color-muted);
+  --tw-prose-th-borders: var(--color-border);
+  --tw-prose-td-borders: var(--color-border);
+}
+
+/* ============================================
+   ANIMATIONS & KEYFRAMES
+   ============================================ */
+
+/* Smooth reveal animations */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes reveal-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes emerge-from-void {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes lotus-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 0.92;
+  }
+}
+
+@keyframes breath-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes breath-deep {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+.animate-reveal-up {
+  animation: reveal-up 1.0s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-reveal-scale {
+  animation: reveal-scale 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-breath-slow {
+  animation: breath-slow 14s ease-in-out infinite;
+}
+
+.animate-breath-deep {
+  animation: breath-deep 18s ease-in-out infinite;
+}
+
+.lotus-pulse {
+  animation: lotus-pulse 3s ease-in-out infinite;
+}
+
+/* Grain overlay - Reduced for dark backgrounds */
+.grain-overlay {
+  position: relative;
+}
+
+.grain-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/></filter><rect width='200' height='200' filter='url(%23n)' opacity='0.35'/></svg>");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+html.light .grain-overlay::after {
+  opacity: 0.04;
+  mix-blend-mode: multiply;
+}
+
+/* Disable grain on mobile — feTurbulence SVG filter is expensive on mobile GPUs */
+@media (max-width: 1023px) {
+  .grain-overlay::after {
+    display: none;
+  }
+}
+
+/* Magnetic button effect (applied via JS) */
+.btn-magnetic {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+/* Scroll progress indicator */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--color-mm-gold),
+    var(--color-primary-hover),
+    var(--color-mm-gold)
+  );
+  transform-origin: 0%;
+  z-index: 100;
+}
+
+/* ============================================
+   SECTION BACKGROUNDS — Alternating warm rhythm
+   Inspired by editorial wellness brands: sections
+   alternate between pure black and warm-tinted dark
+   to create visual breathing room on long-scroll pages.
+   ============================================ */
+
+.section-warm {
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section-elevated {
+  background-color: var(--color-elevated);
+  border-top: 1px solid color-mix(in srgb, var(--color-mm-craquelure) 6%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-mm-craquelure) 6%, transparent);
+}
+
+html.light .section-warm {
+  background: linear-gradient(170deg, #F5ECD4 0%, #EDE0C8 60%, #E5D6B8 100%);
+  border-color: var(--color-border);
+}
+
+html.light .section-elevated {
+  background: linear-gradient(170deg, #EDE0C8 0%, #E5D6B8 60%, #DFD0AC 100%);
+  border-color: var(--color-border);
+}
+
+/* ============================================
+   IMAGE EDGE DISSOLUTION
+   Transparent-background portrait PNGs need soft
+   edges to avoid hard "cutout" silhouettes. These
+   utilities use CSS mask-image for GPU-accelerated
+   edge feathering — the subject emerges from the
+   void rather than being pasted onto it.
+   ============================================ */
+
+/* Portrait dissolve — strong bottom fade, pronounced side
+   feathering. Designed for transparent-bg PNG cutouts where
+   background-removal artifacts show on edges. */
+.image-dissolve-portrait {
+  mask-image:
+    linear-gradient(to bottom, black 40%, transparent 95%),
+    linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-image:
+    linear-gradient(to bottom, black 40%, transparent 95%),
+    linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+}
+
+/* Softer portrait dissolve — lighter feathering for
+   smaller portraits where heavy masking eats the subject. */
+.image-dissolve-portrait-soft {
+  mask-image:
+    linear-gradient(to bottom, black 55%, transparent 98%),
+    linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-image:
+    linear-gradient(to bottom, black 55%, transparent 98%),
+    linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+  -webkit-mask-composite: source-in;
+}
+
+/* Bottom-only dissolve — for images that only need
+   bottom edge softening (cards, contained portraits). */
+.image-dissolve-bottom {
+  mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+}
+
+/* Atmospheric dissolve — radial fade for ghostly
+   background presence (interstitials, CTA backgrounds). */
+.image-dissolve-atmospheric {
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 80%);
+}
+
+/* Container edge fade — overlay div placed inside
+   image containers to soften object-cover crop edges.
+   Apply to a sibling div overlaying the image. */
+.image-edge-fog {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 40%, var(--color-background) 100%),
+    linear-gradient(to top, transparent 85%, var(--color-background) 100%),
+    linear-gradient(to right, var(--color-background) 0%, transparent 15%, transparent 85%, var(--color-background) 100%);
+  z-index: 1;
+}
+
+/* Lighter variant for card contexts where background
+   is surface/elevated rather than pure black. */
+.image-edge-fog-card {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 50%, var(--color-surface) 100%),
+    linear-gradient(to top, transparent 90%, var(--color-surface) 100%);
+  z-index: 1;
+}
+
+/* ============================================
+   BENTO GRID LAYOUT
+   ============================================ */
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 2rem;
+}
+
+.bento-card-large {
+  grid-column: span 7;
+}
+
+.bento-card-small {
+  grid-column: span 5;
+}
+
+/* Responsive bento */
+@media (max-width: 768px) {
+  .bento-card-large,
+  .bento-card-small {
+    grid-column: span 12;
+  }
+}
+
+/* Loader GIF — breathing scale pulse */
+@keyframes loader-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+/* Navigation progress bar — fast initial burst, slow crawl */
+@keyframes nav-progress {
+  0%   { transform: scaleX(0); }
+  15%  { transform: scaleX(0.25); }
+  50%  { transform: scaleX(0.6); }
+  100% { transform: scaleX(0.95); }
+}
+
+@keyframes nav-progress-complete {
+  from { transform: scaleX(0.95); opacity: 1; }
+  to   { transform: scaleX(1); opacity: 0; }
+}
+
+/* Navigation bar shimmer — traveling highlight */
+@keyframes nav-shimmer {
+  0%   { left: -30%; }
+  100% { left: 130%; }
+}
+
+/* Brand marquee — infinite scroll */
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ============================================
+   HERO DUAL-PANEL — Chronological Dualism
+   Sunrise (warm) and Nightfall (cool) halves
+   ============================================ */
+
+/* Warm cream/gold panel — Pranayama (sunrise) */
+.hero-sunrise {
+  background: linear-gradient(170deg, #F5ECD4 0%, #EDE0C8 60%, #E5D6B8 100%);
+  color: #1A1208;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Deep navy panel — Face Yoga (nightfall) */
+.hero-nightfall {
+  background:    linear-gradient(190deg, #081C17 0%, #0D2A22 60%, #0F2E26 100%);  background-image:    linear-gradient(190deg, #081C17 0%, #0D2A22 60%, #0F2E26 100%),    /* Silk sheen — diagonal luster */    linear-gradient(      145deg,      rgba(46, 158, 134, 0.06) 0%,      rgba(46, 158, 134, 0.12) 30%,      rgba(46, 158, 134, 0.04) 50%,      rgba(46, 158, 134, 0.10) 70%,      rgba(46, 158, 134, 0.05) 100%    ),    /* Fine weave */    repeating-linear-gradient(      0deg,      transparent,      transparent 2px,      rgba(46, 158, 134, 0.02) 2px,      rgba(46, 158, 134, 0.02) 3px    ),    /* Light pool */    radial-gradient(      ellipse at 60% 30%,      rgba(46, 158, 134, 0.10) 0%,      transparent 60%    );
+  color: #F0E8D8;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Charcoal card for dark nightfall panel */
+.nightfall-card {
+  background: linear-gradient(135deg, #0F2420 0%, #152E28 50%, #122A24 100%);
+  color: #F0E8D8;
+  border: 1px solid rgba(196, 136, 58, 0.15);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), 0 0 20px rgba(196, 136, 58, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Conic sunburst rays — warm panel ::before */
+.sunburst::before {
+  content: "";
+  position: absolute;
+  bottom: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 140%;
+  height: 140%;
+  background: conic-gradient(
+    from 180deg at 50% 100%,
+    rgba(212,160,84,0.12) 0deg, transparent 8deg,
+    rgba(212,160,84,0.12) 15deg, transparent 23deg,
+    rgba(212,160,84,0.10) 30deg, transparent 38deg,
+    rgba(212,160,84,0.12) 45deg, transparent 53deg,
+    rgba(212,160,84,0.10) 60deg, transparent 68deg,
+    rgba(212,160,84,0.12) 75deg, transparent 83deg,
+    rgba(212,160,84,0.10) 90deg, transparent 98deg,
+    rgba(212,160,84,0.12) 105deg, transparent 113deg,
+    rgba(212,160,84,0.10) 120deg, transparent 128deg,
+    rgba(212,160,84,0.12) 135deg, transparent 143deg,
+    rgba(212,160,84,0.10) 150deg, transparent 158deg,
+    rgba(212,160,84,0.12) 165deg, transparent 173deg
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Scattered star dots — nightfall panel ::after */
+.starfield::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 80px 120px, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 160px 60px, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 240px 180px, rgba(255,255,255,0.25), transparent),
+    radial-gradient(1px 1px at 40px 200px, rgba(255,255,255,0.35), transparent),
+    radial-gradient(1px 1px at 300px 40px, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 120px 280px, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 350px 150px, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 60px 350px, rgba(255,255,255,0.35), transparent),
+    radial-gradient(1px 1px at 200px 320px, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 280px 260px, rgba(255,255,255,0.25), transparent),
+    radial-gradient(1px 1px at 380px 80px, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 140px 160px, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 320px 300px, rgba(255,255,255,0.35), transparent),
+    radial-gradient(1px 1px at 180px 400px, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1.5px 1.5px at 50px 90px, rgba(255,255,255,0.45), transparent),
+    radial-gradient(1.5px 1.5px at 260px 50px, rgba(255,255,255,0.35), transparent),
+    radial-gradient(1.5px 1.5px at 400px 220px, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 90px 420px, rgba(255,255,255,0.25), transparent),
+    radial-gradient(1px 1px at 340px 380px, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 420px 120px, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1.5px 1.5px at 170px 240px, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 450px 340px, rgba(255,255,255,0.25), transparent),
+    radial-gradient(1px 1px at 30px 460px, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 370px 430px, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1.5px 1.5px at 110px 50px, rgba(255,255,255,0.35), transparent),
+    radial-gradient(1px 1px at 480px 180px, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 220px 470px, rgba(255,255,255,0.25), transparent),
+    radial-gradient(1px 1px at 500px 60px, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 150px 500px, rgba(255,255,255,0.35), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Torn-paper sticker effect for portrait cutouts */
+.torn-portrait {
+  position: relative;
+  clip-path: polygon(
+    2% 0%, 5% 1.5%, 10% 0.5%, 15% 2%, 20% 0%, 25% 1.8%,
+    30% 0.3%, 35% 2.2%, 40% 0.8%, 45% 1.5%, 50% 0%, 55% 2%,
+    60% 0.5%, 65% 1.8%, 70% 0.2%, 75% 2.5%, 80% 0.8%, 85% 1.5%,
+    90% 0%, 95% 2%, 98% 0.5%,
+    100% 3%, 99% 8%, 100% 14%, 99.5% 20%, 100% 26%, 99% 32%,
+    100% 38%, 99.5% 44%, 100% 50%, 99% 56%, 100% 62%, 99.5% 68%,
+    100% 74%, 99% 80%, 100% 86%, 99.5% 92%, 100% 97%,
+    98% 100%, 95% 98.5%, 90% 99.5%, 85% 98%, 80% 100%, 75% 98.2%,
+    70% 99.7%, 65% 97.8%, 60% 99.5%, 55% 98.5%, 50% 100%, 45% 98%,
+    40% 99.2%, 35% 97.8%, 30% 99.5%, 25% 98.5%, 20% 100%, 15% 98%,
+    10% 99.5%, 5% 98.5%, 2% 100%,
+    0% 97%, 1% 92%, 0.5% 86%, 0% 80%, 1% 74%, 0.5% 68%,
+    0% 62%, 1% 56%, 0.5% 50%, 0% 44%, 1% 38%, 0.5% 32%,
+    0% 26%, 1% 20%, 0.5% 14%, 0% 8%, 1% 3%
+  );
+  filter: drop-shadow(3px 4px 8px rgba(0,0,0,0.3));
+}

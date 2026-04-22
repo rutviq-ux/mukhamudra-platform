@@ -1,0 +1,21 @@
+{
+  "name": "@ru/scripts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "seed": "tsx src/seed.ts",
+    "create-razorpay-plans": "tsx src/create-razorpay-plans.ts"
+  },
+  "dependencies": {
+    "@ru/db": "workspace:*",
+    "@ru/config": "workspace:*",
+    "razorpay": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

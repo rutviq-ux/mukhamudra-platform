@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+.next
+.turbo
+dist
+out
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.sw
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+packages/db/prisma/generated
+
+# WhatsApp session
+services/wa-bot/.wwebjs_auth
+services/wa-bot/.wwebjs_cache
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage
+
+# Docker volumes (local)
+postgres_data
+ghost_db_data
+ghost_content
+listmonk_db_data

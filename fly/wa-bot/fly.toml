@@ -1,0 +1,14 @@
+app = "mm-wa-bot"
+primary_region = "bom"
+
+[env]
+  NODE_ENV = "production"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "512mb"
+
+[[mounts]]
+  source = "wa_bot_data"
+  destination = "/data"
+  initial_size = "1gb"

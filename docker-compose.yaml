@@ -1,0 +1,122 @@
+services:
+  # Main application database (Postgres)
+  postgres:
+    image: postgres:16-alpine
+    container_name: mm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ru_yoga
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ru_yoga"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Ghost CMS MySQL database
+  ghost-db:
+    image: mysql:8.0
+    container_name: mm-ghost-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ghost_root_password
+      MYSQL_DATABASE: ghost
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ghost_password
+    volumes:
+      - ghost_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "ghost", "-pghost_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Ghost CMS
+  ghost:
+    image: ghost:5-alpine
+    container_name: mm-ghost
+    restart: unless-stopped
+    depends_on:
+      ghost-db:
+        condition: service_healthy
+    environment:
+      url: http://localhost:2368
+      database__client: mysql
+      database__connection__host: ghost-db
+      database__connection__user: ghost
+      database__connection__password: ghost_password
+      database__connection__database: ghost
+      NODE_ENV: development
+    volumes:
+      - ghost_content:/var/lib/ghost/content
+    ports:
+      - "2368:2368"
+
+  # Listmonk Postgres database
+  listmonk-db:
+    image: postgres:16-alpine
+    container_name: mm-listmonk-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: listmonk
+      POSTGRES_PASSWORD: listmonk_password
+      POSTGRES_DB: listmonk
+    volumes:
+      - listmonk_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U listmonk -d listmonk"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Listmonk email marketing
+  listmonk:
+    image: listmonk/listmonk:latest
+    container_name: mm-listmonk
+    restart: unless-stopped
+    depends_on:
+      listmonk-db:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Kolkata
+    volumes:
+      - ./apps-infra/listmonk/config.toml:/listmonk/config.toml:ro
+    ports:
+      - "9000:9000"
+    command: ["./listmonk", "--config", "/listmonk/config.toml"]
+
+  # WhatsApp Bot
+  wa-bot:
+    build:
+      context: .
+      dockerfile: services/wa-bot/Dockerfile
+    container_name: mm-wa-bot
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://postgres@postgres:5432/ru_yoga"
+      NODE_ENV: production
+    volumes:
+      # Persist WhatsApp auth session across container restarts
+      - wa_bot_auth:/app/services/wa-bot/.wwebjs_auth
+      - wa_bot_cache:/app/services/wa-bot/.wwebjs_cache
+    # Puppeteer needs shared memory
+    shm_size: "256mb"
+
+volumes:
+  postgres_data:
+  ghost_db_data:
+  ghost_content:
+  listmonk_db_data:
+  wa_bot_auth:
+  wa_bot_cache:
+
+networks:
+  default:
+    name: mm-network
