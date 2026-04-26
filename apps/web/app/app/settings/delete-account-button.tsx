@@ -34,7 +34,7 @@ export function DeleteAccountButton() {
         className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
         onClick={() => setStep("confirm")}
       >
-        Request account deletion
+        Delete account
       </Button>
     );
   }
