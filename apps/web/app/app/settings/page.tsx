@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@ru/ui";
 import { NotificationPreferences } from "./notification-preferences";
+import { DeleteAccountButton } from "./delete-account-button";
 
 export default async function UserSettingsPage() {
   const user = await getCurrentUser();
@@ -63,6 +64,36 @@ export default async function UserSettingsPage() {
               marketingOptIn={user.marketingOptIn}
               whatsappOptIn={user.whatsappOptIn}
             />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <Card glass className="border-destructive/20">
+          <CardHeader>
+            <CardTitle className="text-base">Unsubscribe from program</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              To cancel your membership or subscription, go to your{" "}
+              <a href="/app/billing" className="underline">Billing page</a>.
+              You will retain access until the end of your current billing period.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card glass className="border-destructive/20">
+          <CardHeader>
+            <CardTitle className="text-base">Delete account &amp; data</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Permanently delete your account and all associated data. This is
+              separate from cancelling your subscription — unsubscribing from
+              communications keeps your account active.
+            </p>
+            <DeleteAccountButton />
           </CardContent>
         </Card>
       </div>
