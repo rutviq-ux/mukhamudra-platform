@@ -44,7 +44,7 @@ export function AppNav() {
       <div className="mx-auto max-w-6xl flex items-center justify-between">
         {/* Wordmark */}
         <Link
-          href="/app"
+          href="/"
           className="text-lg font-light uppercase tracking-[0.15em]"
           style={{ fontFamily: "var(--font-display)" }}
         >
