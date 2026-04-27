@@ -12,6 +12,7 @@ import {
   type CheckoutPlan,
 } from "@/hooks/use-checkout";
 import { CtaArrowGuide } from "@/components/cta-arrow-guide";
+import { RecordingAddonCheckout } from "@/components/recording-addon-checkout";
 
 const ALL_PLANS: CheckoutPlan[] = [
   { slug: "face-annual", name: "Face Yoga Annual", price: 3000, interval: "year" },
@@ -283,6 +284,9 @@ export function PricingClient() {
                 Access all session recordings across Face Yoga and Pranayama. Watch missed sessions, revisit techniques,
                 or practice along at your own pace. Recordings are available within 24 hours of each session.
               </p>
+              <div className="mt-4">
+                <RecordingAddonCheckout />
+              </div>
             </CardContent>
           </Card>
         </div>
