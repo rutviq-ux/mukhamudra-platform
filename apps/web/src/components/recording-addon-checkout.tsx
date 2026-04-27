@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@ru/ui";
-import { Film, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface RecordingAddonCheckoutProps {
   /** Button variant — compact for billing card, default for recordings upsell */
@@ -110,20 +110,19 @@ export function RecordingAddonCheckout({
   return (
     <div>
       <Button
+        variant="gold"
+        size="lg"
+        className="w-full"
         onClick={handlePurchase}
         disabled={loading || !scriptReady}
-        className="bg-primary hover:bg-primary-hover text-primary-foreground"
       >
         {loading ? (
-          <span className="flex items-center gap-2">
+          <span className="flex items-center justify-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
             Processing…
           </span>
         ) : (
-          <span className="flex items-center gap-2">
-            <Film className="h-4 w-4" />
-            Add Recording Access · ₹1,000/year
-          </span>
+          "Add Recording Access"
         )}
       </Button>
       {error && (
