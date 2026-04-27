@@ -122,7 +122,7 @@ export function RecordingAddonCheckout({
             Processing…
           </span>
         ) : (
-          "Add Recording Access"
+          "Add"
         )}
       </Button>
       {error && (
