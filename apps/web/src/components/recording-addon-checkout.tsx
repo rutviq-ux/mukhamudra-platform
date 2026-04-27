@@ -47,6 +47,12 @@ export function RecordingAddonCheckout({
         method: "POST",
       });
 
+      if (res.status === 401) {
+        // Not logged in — redirect to sign-in, come back after
+        router.push("/auth/sign-in?redirect_url=/pricing");
+        return;
+      }
+
       const data = await res.json();
 
       if (!res.ok) {
