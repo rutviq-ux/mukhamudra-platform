@@ -111,7 +111,7 @@ export default function SignUpPage() {
                   </Clerk.Connection>
                   {!termsChecked && (
                     <p className="text-center text-[0.65rem] text-muted-foreground/70 -mt-2">
-                      Please agree to the Terms &amp; Conditions below to continue
+                      Please agree to the Terms &amp; Conditions below to sign up with Google
                     </p>
                   )}
 
