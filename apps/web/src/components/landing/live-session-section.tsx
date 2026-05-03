@@ -49,10 +49,10 @@ const rightFeatures = [
 
 /* Mock participant tiles for the Google Meet preview */
 const participants = [
-  { src: "/rutviq/IMG_4045.png", name: "Rutviq", host: true },
-  { src: "/meet_images/1.png", name: "Ananya" },
-  { src: "/meet_images/2.png", name: "Priya" },
-  { src: "/meet_images/3.png", name: "Meera" },
+  { src: "/rutviq/IMG_4045.png", name: "Rutviq", host: true, position: "center 20%" },
+  { src: "/meet_images/1.png", name: "Ananya", position: "center top" },
+  { src: "/meet_images/2.png", name: "Priya", position: "center top" },
+  { src: "/meet_images/3.png", name: "Meera", position: "center top" },
 ];
 
 function FeatureCard({
@@ -190,7 +190,8 @@ function MeetMockup() {
                   src={p.src}
                   alt=""
                   fill
-                  className="object-cover object-top"
+                  className="object-cover"
+                  style={{ objectPosition: p.position }}
                   sizes="200px"
                   aria-hidden="true"
                 />
@@ -457,7 +458,8 @@ function PhoneMeetMockup({ compact }: { compact?: boolean }) {
                     src={p.src}
                     alt=""
                     fill
-                    className="object-cover object-top"
+                    className="object-cover"
+                    style={{ objectPosition: p.position }}
                     sizes="140px"
                     aria-hidden="true"
                   />
