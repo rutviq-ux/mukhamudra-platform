@@ -49,7 +49,7 @@ const rightFeatures = [
 
 /* Mock participant tiles for the Google Meet preview */
 const participants = [
-  { src: "/rutviq/IMG_4045.png", name: "Rutviq", host: true, position: "center 10%" },
+  { src: "/rutviq/IMG_4045.png", name: "Rutviq", host: true, position: "center 40%" },
   { src: "/meet_images/1.png", name: "Ananya", position: "center top" },
   { src: "/meet_images/2.png", name: "Priya", position: "center top" },
   { src: "/meet_images/3.png", name: "Meera", position: "center top" },
