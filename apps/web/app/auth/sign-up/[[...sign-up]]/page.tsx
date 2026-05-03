@@ -109,6 +109,11 @@ export default function SignUpPage() {
                       </Clerk.Loading>
                     </Button>
                   </Clerk.Connection>
+                  {!termsChecked && (
+                    <p className="text-center text-[0.65rem] text-muted-foreground/70 -mt-2">
+                      Please agree to the Terms &amp; Conditions below to continue
+                    </p>
+                  )}
 
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <div className="h-px flex-1 bg-border" />
