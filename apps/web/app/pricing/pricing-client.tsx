@@ -77,7 +77,7 @@ const PRODUCTS: Product[] = [
       "3x/week live classes",
       "Choose your batch time",
       "WhatsApp community",
-      "Progressive 8-stage curriculum",
+      "Recording add-on eligible (annual)",
     ],
   },
   {
@@ -95,6 +95,7 @@ const PRODUCTS: Product[] = [
       "All Pranayama sessions",
       "Access to all 4 batches",
       "WhatsApp community for both",
+      "Recording add-on eligible",
     ],
   },
 ];
