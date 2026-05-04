@@ -1,130 +1,108 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@ru/db";
-import { createLogger } from "@ru/config";
-import { getCurrentUser } from "@/lib/auth";
 import { getRecordingAccessInfo } from "@/lib/recording-access";
+import { google } from "googleapis";
 
-const log = createLogger("api:recordings");
+// Google Drive folder IDs
+const FOLDER_IDS = {
+  PRANAYAMA: "1PUQOmctCCNwDZtP1EbVSOhxW0NWpixel",
+  FACE_YOGA: "113XeriQOlOdr2SbJNytEOQzrJq0oR5vy",
+};
 
-/**
- * GET /api/recordings?page=1&limit=20
- *
- * Returns paginated session recordings for users with active RecordingAccess
- * or an active bundle-annual membership.
- */
-export async function GET(request: NextRequest) {
+async function getDriveClient() {
+  const keyBase64 = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64;
+  if (!keyBase64) throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 not set");
+
+  const key = JSON.parse(Buffer.from(keyBase64, "base64").toString("utf-8"));
+
+  const auth = new google.auth.GoogleAuth({
+    credentials: key,
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+  });
+
+  return google.drive({ version: "v3", auth });
+}
+
+async function getFilesFromFolder(drive: any, folderId: string, label: string) {
+  const res = await drive.files.list({
+    q: `'${folderId}' in parents and mimeType contains 'video/' and trashed = false`,
+    fields: "files(id, name, createdTime, size, webViewLink, thumbnailLink)",
+    orderBy: "createdTime desc",
+    pageSize: 100,
+  });
+
+  return (res.data.files || []).map((file: any) => ({
+    id: file.id,
+    name: file.name,
+    createdAt: file.createdTime,
+    size: file.size,
+    url: `https://drive.google.com/file/d/${file.id}/view`,
+    embedUrl: `https://drive.google.com/file/d/${file.id}/preview`,
+    thumbnail: file.thumbnailLink,
+    program: label,
+  }));
+}
+
+export async function GET() {
+  const { userId: clerkId } = await auth();
+  if (!clerkId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({ where: { clerkId } });
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  // Check recording access
+  const accessInfo = await getRecordingAccessInfo(user.id);
+  if (!accessInfo.hasAccess) {
+    return NextResponse.json({ error: "No recording access" }, { status: 403 });
+  }
+
+  // Determine which folders to fetch based on membership
+  const memberships = await prisma.membership.findMany({
+    where: { userId: user.id, status: "ACTIVE" },
+    include: { plan: { include: { product: true } } },
+  });
+
+  const productTypes = new Set<string>();
+  for (const m of memberships) {
+    if (m.plan.product.type === "BUNDLE") {
+      productTypes.add("FACE_YOGA");
+      productTypes.add("PRANAYAMA");
+    } else {
+      productTypes.add(m.plan.product.type);
+    }
+  }
+
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: "Sign in to continue" },
-        { status: 401 }
-      );
+    const drive = await getDriveClient();
+    const allRecordings: any[] = [];
+
+    if (productTypes.has("FACE_YOGA")) {
+      const files = await getFilesFromFolder(drive, FOLDER_IDS.FACE_YOGA, "Face Yoga");
+      allRecordings.push(...files);
     }
 
-    // Check recording access (paid add-on OR bundle-annual)
-    const accessInfo = await getRecordingAccessInfo(user.id);
-
-    if (!accessInfo.hasAccess) {
-      // Check if user has an annual membership (eligible for paid add-on)
-      const annualMembership = await prisma.membership.findFirst({
-        where: {
-          userId: user.id,
-          status: "ACTIVE",
-          plan: {
-            interval: "ANNUAL",
-            product: { type: { not: "BUNDLE" } },
-          },
-        },
-      });
-
-      return NextResponse.json({
-        hasAccess: false,
-        isEligible: !!annualMembership,
-        recordings: [],
-        total: 0,
-      });
+    if (productTypes.has("PRANAYAMA")) {
+      const files = await getFilesFromFolder(drive, FOLDER_IDS.PRANAYAMA, "Pranayama");
+      allRecordings.push(...files);
     }
 
-    // Parse pagination
-    const { searchParams } = new URL(request.url);
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const limit = Math.min(
-      50,
-      Math.max(1, parseInt(searchParams.get("limit") || "20", 10))
+    // Sort by date descending
+    allRecordings.sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    const skip = (page - 1) * limit;
-
-    // Get user's accessible product types (from memberships)
-    const memberships = await prisma.membership.findMany({
-      where: { userId: user.id, status: "ACTIVE" },
-      include: { plan: { include: { product: true } } },
-    });
-
-    const productTypes = new Set<string>();
-    for (const m of memberships) {
-      if (m.plan.product.type === "BUNDLE") {
-        productTypes.add("FACE_YOGA");
-        productTypes.add("PRANAYAMA");
-      } else {
-        productTypes.add(m.plan.product.type);
-      }
-    }
-
-    const productFilter =
-      productTypes.size > 0
-        ? { product: { type: { in: [...productTypes] as any } } }
-        : undefined;
-
-    // Get completed sessions with recordings for user's products
-    const [recordings, total] = await Promise.all([
-      prisma.session.findMany({
-        where: {
-          recordingUrl: { not: null },
-          status: "COMPLETED",
-          ...productFilter,
-        },
-        select: {
-          id: true,
-          title: true,
-          startsAt: true,
-          recordingUrl: true,
-          batch: {
-            select: {
-              name: true,
-              slug: true,
-              product: { select: { type: true, name: true } },
-            },
-          },
-        },
-        orderBy: { startsAt: "desc" },
-        skip,
-        take: limit,
-      }),
-      prisma.session.count({
-        where: {
-          recordingUrl: { not: null },
-          status: "COMPLETED",
-          ...productFilter,
-        },
-      }),
-    ]);
 
     return NextResponse.json({
-      hasAccess: true,
-      expiresAt: accessInfo.expiresAt,
-      source: accessInfo.source,
-      recordings,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      recordings: allRecordings,
+      accessInfo: {
+        source: accessInfo.source,
+        expiresAt: accessInfo.expiresAt,
+      },
     });
   } catch (error) {
-    log.error({ err: error }, "Failed to fetch recordings");
-    return NextResponse.json(
-      { error: "Failed to fetch recordings" },
-      { status: 500 }
-    );
+    console.error("Drive API error:", error);
+    return NextResponse.json({ error: "Failed to fetch recordings" }, { status: 500 });
   }
 }
