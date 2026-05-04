@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@ru/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@ru/ui";
 import { Film, Lock, Play, Calendar, Loader2 } from "lucide-react";
 import { RecordingAddonCheckout } from "@/components/recording-addon-checkout";
 
@@ -16,8 +10,6 @@ interface Recording {
   name: string;
   createdAt: string;
   url: string;
-  embedUrl: string;
-  thumbnail?: string;
   program: string;
 }
 
@@ -37,10 +29,7 @@ export default function RecordingsPage() {
     async function fetchRecordings() {
       try {
         const res = await fetch("/api/recordings");
-        if (res.status === 403) {
-          setNoAccess(true);
-          return;
-        }
+        if (res.status === 403) { setNoAccess(true); return; }
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error || "Failed to load recordings");
@@ -69,9 +58,7 @@ export default function RecordingsPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-light tracking-wide" style={{ fontFamily: "var(--font-display)" }}>
-            Recordings
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-light tracking-wide" style={{ fontFamily: "var(--font-display)" }}>Recordings</h1>
           <p className="text-muted-foreground mt-2 text-sm">Revisit your sessions anytime</p>
         </div>
         <Card className="void-card max-w-lg mx-auto text-center">
@@ -79,11 +66,9 @@ export default function RecordingsPage() {
             <div className="mx-auto w-12 h-12 rounded-full bg-[rgba(196,136,58,0.1)] flex items-center justify-center mb-3">
               <Lock className="w-6 h-6 text-[#C4883A]" />
             </div>
-            <CardTitle className="text-xl" style={{ fontFamily: "var(--font-display)" }}>
-              Recording Access
-            </CardTitle>
+            <CardTitle className="text-xl" style={{ fontFamily: "var(--font-display)" }}>Recording Access</CardTitle>
             <CardDescription>
-              Add recording access for ₹1,000/year to watch all your session recordings.
+              Add recording access for ₹1,000/year to watch all your session recordings. Available for all plans — monthly or annual.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -97,13 +82,9 @@ export default function RecordingsPage() {
   if (error) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl md:text-3xl font-light tracking-wide" style={{ fontFamily: "var(--font-display)" }}>
-          Recordings
-        </h1>
+        <h1 className="text-2xl md:text-3xl font-light tracking-wide" style={{ fontFamily: "var(--font-display)" }}>Recordings</h1>
         <Card className="void-card text-center py-12">
-          <CardContent>
-            <p className="text-muted-foreground">{error}</p>
-          </CardContent>
+          <CardContent><p className="text-muted-foreground">{error}</p></CardContent>
         </Card>
       </div>
     );
@@ -113,9 +94,7 @@ export default function RecordingsPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-2xl md:text-3xl font-light tracking-wide" style={{ fontFamily: "var(--font-display)" }}>
-            Recordings
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-light tracking-wide" style={{ fontFamily: "var(--font-display)" }}>Recordings</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {accessInfo?.source === "bundle-annual" ? "Included with Bundle Annual" : "Recording Add-on"}
             {accessInfo?.expiresAt && (
@@ -151,12 +130,8 @@ export default function RecordingsPage() {
                   <Calendar className="w-3 h-3" />
                   {new Date(recording.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                 </div>
-                <a
-                  href={recording.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-[#C4883A] hover:text-[#d4984a] transition-colors"
-                >
+                <a href={recording.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-[#C4883A] hover:text-[#d4984a] transition-colors">
                   <Play className="w-4 h-4" />
                   Watch Recording
                 </a>

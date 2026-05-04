@@ -10,7 +10,7 @@ const log = createLogger("api:razorpay:recording-addon");
  * POST /api/razorpay/recording-addon
  *
  * Creates a Razorpay order for the recording add-on (₹1,000/year).
- * Eligibility: user must have an ACTIVE annual membership and no active recording access.
+ * Eligibility: user must have an ACTIVE membership (monthly or annual) and no active recording access.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     // Bundle annual already includes free recording access
     if (
       activeMembership.plan.product.type === "BUNDLE" &&
-      activeMembership.plan.interval === "ANNUAL"
+      activeMembership.plan.interval !== null
     ) {
       return NextResponse.json(
         {
