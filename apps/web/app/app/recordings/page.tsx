@@ -41,12 +41,15 @@ export default function RecordingsPage() {
           setNoAccess(true);
           return;
         }
-        if (!res.ok) throw new Error("Failed to load recordings");
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to load recordings");
+        }
         const data = await res.json();
         setRecordings(data.recordings);
         setAccessInfo(data.accessInfo);
-      } catch (err) {
-        setError("Failed to load recordings. Please try again.");
+      } catch (err: any) {
+        setError(err?.message ?? "Failed to load recordings. Please try again.");
       } finally {
         setLoading(false);
       }

@@ -101,8 +101,15 @@ export async function GET() {
         expiresAt: accessInfo.expiresAt,
       },
     });
-  } catch (error) {
-    console.error("Drive API error:", error);
-    return NextResponse.json({ error: "Failed to fetch recordings" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Drive API error:", error?.message ?? error);
+    const msg = error?.message ?? "Unknown error";
+    if (msg.includes("GOOGLE_SERVICE_ACCOUNT_KEY_BASE64")) {
+      return NextResponse.json({ error: "Google credentials not configured" }, { status: 500 });
+    }
+    if (msg.includes("403") || msg.includes("forbidden") || msg.includes("permission")) {
+      return NextResponse.json({ error: "Drive folder not shared with service account" }, { status: 500 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
