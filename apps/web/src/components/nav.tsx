@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { motion, AnimatePresence, useMotionValueEvent, useScroll } from "framer-motion";
 
 const navItems = [
@@ -22,6 +22,7 @@ const EASE_GALLERY = [0.22, 1, 0.36, 1] as const;
 export function Nav() {
   const pathname = usePathname();
   const { isSignedIn } = useUser();
+  const { signOut } = useClerk();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -135,12 +136,20 @@ export function Nav() {
             <span className="w-[3px] h-[3px] rounded-full bg-border" />
 
             {isSignedIn ? (
-              <Link
-                href="/app"
-                className="text-[0.7rem] uppercase tracking-[0.15em] px-4 py-2 rounded-full border border-border backdrop-blur-sm bg-foreground/5 text-foreground hover:border-foreground/30 hover:bg-foreground/10 transition-all duration-500 font-medium"
-              >
-                Dashboard
-              </Link>
+              <>
+                <Link
+                  href="/app"
+                  className="text-[0.7rem] uppercase tracking-[0.15em] px-4 py-2 rounded-full border border-border backdrop-blur-sm bg-foreground/5 text-foreground hover:border-foreground/30 hover:bg-foreground/10 transition-all duration-500 font-medium"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={() => signOut({ redirectUrl: "/" })}
+                  className="text-[0.75rem] uppercase tracking-[0.18em] text-muted-foreground hover:text-primary transition-colors duration-500"
+                >
+                  Sign Out
+                </button>
+              </>
             ) : (
               <>
                 <Link
@@ -302,12 +311,20 @@ export function Nav() {
                   className="mt-8 flex flex-col items-center gap-5"
                 >
                   {isSignedIn ? (
-                    <Link
-                      href="/app"
-                      className="text-sm uppercase tracking-[0.15em] px-8 py-3 rounded-full border border-border backdrop-blur-sm bg-foreground/5 text-foreground hover:border-foreground/30 hover:bg-foreground/10 transition-all duration-500 font-medium"
-                    >
-                      Dashboard
-                    </Link>
+                    <>
+                      <Link
+                        href="/app"
+                        className="text-sm uppercase tracking-[0.15em] px-8 py-3 rounded-full border border-border backdrop-blur-sm bg-foreground/5 text-foreground hover:border-foreground/30 hover:bg-foreground/10 transition-all duration-500 font-medium"
+                      >
+                        Dashboard
+                      </Link>
+                      <button
+                        onClick={() => signOut({ redirectUrl: "/" })}
+                        className="text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors duration-500"
+                      >
+                        Sign Out
+                      </button>
+                    </>
                   ) : (
                     <>
                       <Link
