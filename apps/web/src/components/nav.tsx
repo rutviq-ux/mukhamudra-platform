@@ -96,7 +96,7 @@ export function Nav() {
           </Link>
 
           {/* Desktop links */}
-          <div className="hidden lg:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-6">
             {navItems.map((item) => {
               const active = isActive(item.href);
               return (
@@ -133,7 +133,7 @@ export function Nav() {
             })}
 
             {/* Separator dot */}
-            <span className="w-[3px] h-[3px] rounded-full bg-border" />
+            <span className="w-[3px] h-[3px] rounded-full bg-border hidden" />
 
             {isSignedIn ? (
               <>
