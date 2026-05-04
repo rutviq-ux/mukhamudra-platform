@@ -95,7 +95,6 @@ const PRODUCTS: Product[] = [
       "All Pranayama sessions",
       "Access to all 4 batches",
       "WhatsApp community for both",
-      "Free recording add-on for 12 months",
     ],
   },
 ];
