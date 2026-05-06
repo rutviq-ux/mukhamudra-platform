@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       let order;
       try {
         order = await createRazorpayOrder({
-          amount: plan.price, // already in paise
+          amount: plan.amountPaise, // already in paise
           notes: {
             planId: plan.id,
             userId: user.id,
