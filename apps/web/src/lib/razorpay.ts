@@ -46,7 +46,7 @@ export async function createRazorpaySubscription(
     plan_id: options.planId,
     total_count: options.totalCount || 120,
     quantity: options.quantity || 1,
-    customer_notify: options.customerNotify || 1,
+    customer_notify: options.customerNotify ?? 1,
     notes: options.notes || {},
   });
 

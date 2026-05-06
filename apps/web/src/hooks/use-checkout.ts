@@ -46,6 +46,7 @@ export function useCheckout({
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [addRecording, setAddRecording] = useState(false);
+  const [autoRenew, setAutoRenew] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +68,7 @@ export function useCheckout({
   const isLoading = loadingPhase !== null;
 
   const startCheckout = useCallback(
-    async (planSlug: string, wantRecording: boolean) => {
+    async (planSlug: string, wantRecording: boolean, wantAutoRenew: boolean) => {
       setError(null);
       setLoadingPhase("creating");
       trackEvent.checkoutOpened("razorpay");
@@ -79,11 +80,11 @@ export function useCheckout({
         const res = await fetch("/api/razorpay/subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planSlug, termsAccepted: true }),
+          body: JSON.stringify({ planSlug, termsAccepted: true, autoRenew: wantAutoRenew }),
         });
 
         if (res.status === 401) {
-          saveCheckoutIntent(planSlug, wantRecording, true, redirectPage);
+          saveCheckoutIntent(planSlug, wantRecording, wantAutoRenew, true, redirectPage);
           setLoadingPhase("redirecting");
           router.push(`/auth/sign-up?redirect_url=${redirectPage}`);
           return;
@@ -97,31 +98,34 @@ export function useCheckout({
           return;
         }
 
-        if (data.subscriptionId) {
-          if (wantRecording && !isBundlePlan) {
-            sessionStorage.setItem("mm-recording-addon-intent", "true");
-          }
-
-          setLoadingPhase("opening");
-
-          const rzp = new (window as any).Razorpay({
-            key: data.keyId,
-            subscription_id: data.subscriptionId,
-            name: "Mukha Mudra",
-            description: `${productLabel}: ${plan?.name}`,
-            handler: () => {
-              window.location.href = "/checkout/success";
-            },
-            modal: {
-              ondismiss: () => {
-                setLoadingPhase(null);
-              },
-            },
-            prefill: data.prefill || {},
-            theme: { color: "#2E9E86" },
-          });
-          rzp.open();
+        if (wantRecording && !isBundlePlan) {
+          sessionStorage.setItem("mm-recording-addon-intent", "true");
         }
+
+        setLoadingPhase("opening");
+
+        const rzpOptions: Record<string, unknown> = {
+          key: data.keyId,
+          name: "Mukha Mudra",
+          description: `${productLabel}: ${plan?.name}`,
+          handler: () => {
+            window.location.href = "/checkout/success";
+          },
+          modal: { ondismiss: () => setLoadingPhase(null) },
+          prefill: data.prefill || {},
+          theme: { color: "#2E9E86" },
+        };
+
+        if (data.subscriptionId) {
+          rzpOptions.subscription_id = data.subscriptionId;
+        } else if (data.orderId) {
+          rzpOptions.order_id = data.orderId;
+          rzpOptions.amount = data.amount;
+          rzpOptions.currency = "INR";
+        }
+
+        const rzp = new (window as any).Razorpay(rzpOptions);
+        rzp.open();
       } catch {
         setError("Connection error. Please check your internet and try again.");
         setLoadingPhase(null);
@@ -137,15 +141,15 @@ export function useCheckout({
       if (!planSlug) return;
 
       if (!isSignedIn) {
-        saveCheckoutIntent(planSlug, addRecording, termsAccepted, redirectPage);
+        saveCheckoutIntent(planSlug, addRecording, autoRenew, termsAccepted, redirectPage);
         setLoadingPhase("redirecting");
         router.push(`/auth/sign-up?redirect_url=${redirectPage}`);
         return;
       }
 
-      await startCheckout(planSlug, addRecording);
+      await startCheckout(planSlug, addRecording, autoRenew);
     },
-    [selectedPlan, isSignedIn, addRecording, termsAccepted, router, startCheckout, redirectPage],
+    [selectedPlan, isSignedIn, addRecording, autoRenew, termsAccepted, router, startCheckout, redirectPage],
   );
 
   // Auto-resume checkout after sign-in redirect
@@ -159,6 +163,7 @@ export function useCheckout({
       const intent = JSON.parse(raw) as {
         planSlug: string;
         addRecording: boolean;
+        autoRenew: boolean;
         termsAccepted?: boolean;
         page: string;
       };
@@ -170,10 +175,11 @@ export function useCheckout({
       if (validSlugs.has(intent.planSlug)) {
         setSelectedPlan(intent.planSlug);
         setAddRecording(intent.addRecording);
+        setAutoRenew(intent.autoRenew ?? false);
         if (intent.termsAccepted) setTermsAccepted(true);
       }
 
-      const timer = setTimeout(() => startCheckout(intent.planSlug, intent.addRecording), 600);
+      const timer = setTimeout(() => startCheckout(intent.planSlug, intent.addRecording, intent.autoRenew ?? false), 600);
       return () => clearTimeout(timer);
     } catch {
       sessionStorage.removeItem("mm-checkout-intent");
@@ -195,6 +201,8 @@ export function useCheckout({
     setSelectedPlan,
     addRecording,
     setAddRecording,
+    autoRenew,
+    setAutoRenew,
     termsAccepted,
     setTermsAccepted,
     loadingPhase,
@@ -215,13 +223,14 @@ export function useCheckout({
 function saveCheckoutIntent(
   planSlug: string,
   addRecording: boolean,
+  autoRenew: boolean,
   termsAccepted: boolean,
   page: string,
 ) {
   try {
     sessionStorage.setItem(
       "mm-checkout-intent",
-      JSON.stringify({ planSlug, addRecording, termsAccepted, page }),
+      JSON.stringify({ planSlug, addRecording, autoRenew, termsAccepted, page }),
     );
   } catch {
     /* quota or private browsing */

@@ -6,7 +6,7 @@ import {
   validateRequest,
   createLogger,
 } from "@ru/config";
-import { createRazorpaySubscription } from "@/lib/razorpay";
+import { createRazorpaySubscription, createRazorpayOrder } from "@/lib/razorpay";
 import { getCurrentUser } from "@/lib/auth";
 
 const log = createLogger("api:razorpay:subscription");
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { planSlug, termsAccepted } = validation.data;
+    const { planSlug, termsAccepted, autoRenew } = validation.data;
 
     // Require authenticated user
     const user = await getCurrentUser();
@@ -72,67 +72,98 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Razorpay subscription
+    // Create Razorpay subscription OR one-time order
     const env = getServerEnv();
-    const keyPreview = env.RAZORPAY_KEY_ID
-      ? `${env.RAZORPAY_KEY_ID.slice(0, 8)}...${env.RAZORPAY_KEY_ID.slice(-4)}`
-      : "MISSING";
-    const secretPresent = env.RAZORPAY_KEY_SECRET ? `set (${env.RAZORPAY_KEY_SECRET.length} chars)` : "MISSING";
-    log.info(
-      { keyPreview, secretPresent, razorpayPlanId: plan.razorpayPlanId },
-      "Creating Razorpay subscription"
-    );
 
-    let subscription;
-    try {
-      subscription = await createRazorpaySubscription({
-        planId: plan.razorpayPlanId,
-        totalCount: plan.interval === "ANNUAL" ? 10 : 120,
-        notes: {
-          planId: plan.id,
+    let responsePayload: Record<string, unknown>;
+
+    if (autoRenew === false) {
+      // One-time order (no autopay)
+      let order;
+      try {
+        order = await createRazorpayOrder({
+          amount: plan.price, // already in paise
+          notes: {
+            planId: plan.id,
+            userId: user.id,
+            productType: plan.product.type,
+          },
+        });
+      } catch (rzpError: unknown) {
+        const errMsg = rzpError instanceof Error ? rzpError.message : String(rzpError);
+        log.error({ error: errMsg }, "Razorpay order creation failed");
+        return NextResponse.json(
+          { error: "Payment provider error. Please try again." },
+          { status: 502 }
+        );
+      }
+
+      await prisma.membership.upsert({
+        where: { userId_planId: { userId: user.id, planId: plan.id } },
+        update: { razorpayOrderId: order.id, status: "PENDING" },
+        create: {
           userId: user.id,
-          productType: plan.product.type,
+          planId: plan.id,
+          razorpayOrderId: order.id,
+          status: "PENDING",
         },
       });
-    } catch (rzpError: unknown) {
-      const errMsg = rzpError instanceof Error ? rzpError.message : String(rzpError);
-      const errDetails = typeof rzpError === "object" && rzpError !== null
-        ? JSON.stringify(rzpError, null, 2)
-        : errMsg;
-      log.error(
-        { keyPreview, secretPresent, error: errDetails },
-        "Razorpay API call failed"
-      );
-      return NextResponse.json(
-        { error: "Payment provider error. Please try again." },
-        { status: 502 }
-      );
+
+      responsePayload = {
+        orderId: order.id,
+        keyId: env.RAZORPAY_KEY_ID,
+        amount: plan.price,
+        prefill: {
+          name: user.name || "",
+          email: user.email,
+          contact: user.phone || "",
+        },
+      };
+    } else {
+      // Subscription (autopay)
+      let subscription;
+      try {
+        subscription = await createRazorpaySubscription({
+          planId: plan.razorpayPlanId,
+          totalCount: plan.interval === "ANNUAL" ? 10 : 120,
+          notes: {
+            planId: plan.id,
+            userId: user.id,
+            productType: plan.product.type,
+          },
+        });
+      } catch (rzpError: unknown) {
+        const errMsg = rzpError instanceof Error ? rzpError.message : String(rzpError);
+        log.error({ error: errMsg }, "Razorpay subscription creation failed");
+        return NextResponse.json(
+          { error: "Payment provider error. Please try again." },
+          { status: 502 }
+        );
+      }
+
+      await prisma.membership.upsert({
+        where: { userId_planId: { userId: user.id, planId: plan.id } },
+        update: { razorpaySubscriptionId: subscription.id, status: "PENDING" },
+        create: {
+          userId: user.id,
+          planId: plan.id,
+          razorpaySubscriptionId: subscription.id,
+          status: "PENDING",
+        },
+      });
+
+      responsePayload = {
+        subscriptionId: subscription.id,
+        keyId: env.RAZORPAY_KEY_ID,
+        prefill: {
+          name: user.name || "",
+          email: user.email,
+          contact: user.phone || "",
+        },
+      };
     }
 
-    // Upsert a single membership row for this plan
-    await prisma.membership.upsert({
-      where: { userId_planId: { userId: user.id, planId: plan.id } },
-      update: {
-        razorpaySubscriptionId: subscription.id,
-        status: "PENDING",
-      },
-      create: {
-        userId: user.id,
-        planId: plan.id,
-        razorpaySubscriptionId: subscription.id,
-        status: "PENDING",
-      },
-    });
-
-    return NextResponse.json({
-      subscriptionId: subscription.id,
-      keyId: env.RAZORPAY_KEY_ID,
-      prefill: {
-        name: user.name || "",
-        email: user.email,
-        contact: user.phone || "",
-      },
-    });
+    return NextResponse.json(responsePayload);
   } catch (error) {
     log.error({ err: error }, "Failed to create subscription");
     return NextResponse.json(

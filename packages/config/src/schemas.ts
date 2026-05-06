@@ -34,6 +34,7 @@ export const subscriptionSchema = z.object({
   termsAccepted: z.literal(true, {
     errorMap: () => ({ message: "You must accept the Terms & Conditions" }),
   }),
+  autoRenew: z.boolean().optional().default(false),
 });
 
 export type SubscriptionInput = z.infer<typeof subscriptionSchema>;

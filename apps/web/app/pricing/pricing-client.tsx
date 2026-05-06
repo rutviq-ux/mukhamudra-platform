@@ -115,6 +115,8 @@ export function PricingClient() {
     isLoading,
     isLoaded,
     handleSubscribe,
+    autoRenew,
+    setAutoRenew,
   } = useCheckout({
     redirectPage: "/pricing",
     productLabel: "Plan",
@@ -240,6 +242,15 @@ export function PricingClient() {
 
                   <div className="mt-auto space-y-2">
                     <CtaArrowGuide />
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={autoRenew}
+                        onChange={(e) => setAutoRenew(e.target.checked)}
+                        className="rounded"
+                      />
+                      Enable auto-renew
+                    </label>
                     <Button
                       variant="gold"
                       size="lg"
