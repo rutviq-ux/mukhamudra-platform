@@ -98,13 +98,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await prisma.membership.upsert({
-        where: { userId_planId: { userId: user.id, planId: plan.id } },
-        update: { razorpayOrderId: order.id, status: "PENDING" },
-        create: {
+      await prisma.order.create({
+        data: {
           userId: user.id,
           planId: plan.id,
           razorpayOrderId: order.id,
+          amountPaise: plan.amountPaise,
           status: "PENDING",
         },
       });
@@ -112,7 +111,7 @@ export async function POST(request: NextRequest) {
       responsePayload = {
         orderId: order.id,
         keyId: env.RAZORPAY_KEY_ID,
-        amount: plan.price,
+        amount: plan.amountPaise,
         prefill: {
           name: user.name || "",
           email: user.email,

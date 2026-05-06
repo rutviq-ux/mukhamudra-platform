@@ -212,9 +212,34 @@ async function handlePaymentCaptured(payload: any) {
       });
     }
 
+    // ─── One-time subscription plan: activate membership ───
+    const periodEnd = new Date();
+    periodEnd.setDate(
+      periodEnd.getDate() + (order.plan.durationDays ?? (order.plan.interval === "ANNUAL" ? 365 : 30))
+    );
+
+    await tx.membership.upsert({
+      where: { userId_planId: { userId: order.userId, planId: order.planId } },
+      update: {
+        status: "ACTIVE",
+        periodStart: new Date(),
+        periodEnd,
+      },
+      create: {
+        userId: order.userId,
+        planId: order.planId,
+        status: "ACTIVE",
+        periodStart: new Date(),
+        periodEnd,
+      },
+    });
+
     return {
       status: "updated" as const,
       orderId: order.id,
+      userId: order.userId,
+      planId: order.planId,
+      periodEnd,
     };
   });
 
@@ -231,11 +256,11 @@ async function handlePaymentCaptured(payload: any) {
       log.error({ err }, "Failed to queue recording addon notification")
     );
   } else if (result.status === "updated") {
-    log.info({ orderId: result.orderId }, "Order paid");
+    log.info({ orderId: result.orderId }, "Order paid, membership activated");
 
     const order = await prisma.order.findUnique({
       where: { razorpayOrderId: orderId },
-      include: { plan: true },
+      include: { plan: { include: { product: true } } },
     });
     if (order) {
       notifyPaymentSuccess({
@@ -245,6 +270,51 @@ async function handlePaymentCaptured(payload: any) {
         amount: (order.amountPaise / 100).toLocaleString("en-IN"),
       }).catch((err) =>
         log.error({ err }, "Failed to queue payment confirmation notification")
+      );
+
+      notifyMembershipActivatedEmail({
+        userId: order.userId,
+        planName: order.plan.name,
+        endDate: result.periodEnd.toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+      }).catch((err) =>
+        log.error({ err }, "Failed to queue membership activated email")
+      );
+
+      // Queue WhatsApp group adds
+      const user = await prisma.user.findUnique({
+        where: { id: order.userId },
+        select: { phone: true },
+      });
+
+      if (user?.phone) {
+        const productTypes =
+          order.plan.product.type === "BUNDLE"
+            ? ["FACE_YOGA", "PRANAYAMA"]
+            : [order.plan.product.type];
+
+        const batches = await prisma.batch.findMany({
+          where: {
+            isActive: true,
+            product: { type: { in: productTypes as any } },
+          },
+          select: { slug: true },
+        });
+
+        for (const batch of batches) {
+          queueWhatsAppGroupAdd(user.phone, batch.slug).catch((err) =>
+            log.error({ err, batchSlug: batch.slug }, "Failed to queue WhatsApp group add")
+          );
+        }
+      }
+
+      emitSequenceEvent("subscription.activated", {
+        userId: order.userId,
+      }).catch((err) =>
+        log.error({ err }, "Failed to emit subscription.activated sequence event")
       );
     }
   }
@@ -285,49 +355,6 @@ async function handleSubscriptionActivated(payload: any) {
   });
 
   log.info({ subscriptionId }, "Membership activated");
-
-  // ─── Auto-grant recording access for bundle-annual ───
-  if (
-    membership.plan.product.type === "BUNDLE" &&
-    membership.plan.interval === "ANNUAL"
-  ) {
-    const existingAccess = await prisma.recordingAccess.findFirst({
-      where: {
-        userId: membership.userId,
-        isActive: true,
-        expiresAt: { gt: new Date() },
-      },
-    });
-
-    if (!existingAccess) {
-      const expiresAt =
-        currentPeriodEnd ||
-        new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-
-      await prisma.recordingAccess.create({
-        data: {
-          userId: membership.userId,
-          expiresAt,
-          isActive: true,
-        },
-      });
-
-      log.info(
-        { userId: membership.userId, expiresAt },
-        "Auto-granted recording access for bundle-annual"
-      );
-
-      notifyRecordingAddonPurchased({
-        userId: membership.userId,
-        expiresAt,
-      }).catch((err) =>
-        log.error(
-          { err },
-          "Failed to notify bundle-annual recording access"
-        )
-      );
-    }
-  }
 
   // Send notification
   const isBundle = membership.plan.product.type === "BUNDLE";
@@ -438,42 +465,6 @@ async function handleSubscriptionCharged(payload: any) {
     { subscriptionId, periodEnd: currentPeriodEnd },
     "Membership renewed"
   );
-
-  // ─── Extend recording access on bundle-annual renewal ───
-  if (
-    membership.plan.product.type === "BUNDLE" &&
-    membership.plan.interval === "ANNUAL"
-  ) {
-    const expiresAt =
-      currentPeriodEnd ||
-      new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-
-    // Extend existing or create new
-    const existing = await prisma.recordingAccess.findFirst({
-      where: { userId: membership.userId },
-      orderBy: { expiresAt: "desc" },
-    });
-
-    if (existing) {
-      await prisma.recordingAccess.update({
-        where: { id: existing.id },
-        data: { expiresAt, isActive: true },
-      });
-    } else {
-      await prisma.recordingAccess.create({
-        data: {
-          userId: membership.userId,
-          expiresAt,
-          isActive: true,
-        },
-      });
-    }
-
-    log.info(
-      { userId: membership.userId, expiresAt },
-      "Extended recording access for bundle-annual renewal"
-    );
-  }
 }
 
 async function handleSubscriptionCancelled(payload: any) {
