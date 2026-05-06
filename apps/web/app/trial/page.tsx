@@ -112,18 +112,24 @@ export default function TrialPage() {
             {/* Video — always rendered but hidden behind gate */}
             <video
               ref={videoRef}
-              controls={unlocked}
+              controls
               playsInline
-              preload="auto"
+              preload="metadata"
               poster="/hero_videos/poster.png"
               onEnded={() => setHasEnded(true)}
               className="w-full h-full object-cover"
+              style={{ display: unlocked ? "block" : "none" }}
             >
               <source
                 src="/hero_videos/trial_session.mp4"
                 type="video/mp4"
               />
             </video>
+
+            {/* Placeholder when not yet unlocked */}
+            {!unlocked && (
+              <div className="absolute inset-0 bg-black/80" />
+            )}
 
             {/* ── Lead capture gate ── */}
             <AnimatePresence>
