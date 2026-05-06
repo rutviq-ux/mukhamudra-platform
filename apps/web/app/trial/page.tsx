@@ -24,12 +24,9 @@ function validateField(
     case "phone": {
       const cleaned = value.replace(/[\s\-()]/g, "");
       if (!cleaned) return "WhatsApp number is required";
-      // After prepending +91, full number should be 12 digits (without +)
       const digits = cleaned.replace(/\D/g, "");
-      if (digits.length < 10)
-        return "Please enter a valid 10-digit number";
-      if (digits.length > 10)
-        return "Please enter only 10 digits (without country code)";
+      if (digits.length < 6)
+        return "Please enter a valid phone number";
       return "";
     }
     default:
@@ -37,9 +34,9 @@ function validateField(
   }
 }
 
-function formatPhoneForApi(phone: string): string {
+function formatPhoneForApi(phone: string, countryCode: string): string {
   const digits = phone.replace(/\D/g, "");
-  return `+91${digits}`;
+  return `${countryCode}${digits}`;
 }
 
 export default function TrialPage() {
@@ -50,6 +47,7 @@ export default function TrialPage() {
   const [apiError, setApiError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [countryCode, setCountryCode] = useState("+91");
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -81,7 +79,7 @@ export default function TrialPage() {
       const result = await submitLead({
         name,
         email: email || undefined,
-        phone: formatPhoneForApi(phone),
+        phone: formatPhoneForApi(phone, countryCode),
         source: "trial",
       });
 
@@ -211,32 +209,44 @@ export default function TrialPage() {
                       {/* Phone field with country code */}
                       <div className="mt-2">
                         <div className="flex gap-0">
-                          <div className="flex items-center gap-1.5 shrink-0 px-3 py-3 rounded-l-lg bg-white/10 border border-r-0 border-white/15 text-sm text-white/60">
-                            <span className="text-base leading-none">🇮🇳</span>
-                            <span>+91</span>
+                          <div className="flex items-center shrink-0 rounded-l-lg bg-white/10 border border-r-0 border-white/15">
+                            <select
+                              value={countryCode}
+                              onChange={(e) => setCountryCode(e.target.value)}
+                              className="px-3 py-3 bg-transparent text-sm text-white/70 outline-none cursor-pointer"
+                            >
+                              <option value="+91">🇮🇳 +91</option>
+                              <option value="+1">🇺🇸 +1</option>
+                              <option value="+44">🇬🇧 +44</option>
+                              <option value="+61">🇦🇺 +61</option>
+                              <option value="+49">🇩🇪 +49</option>
+                              <option value="+971">🇦🇪 +971</option>
+                              <option value="+65">🇸🇬 +65</option>
+                              <option value="+60">🇲🇾 +60</option>
+                              <option value="+64">🇳🇿 +64</option>
+                              <option value="+353">🇮🇪 +353</option>
+                              <option value="+41">🇨🇭 +41</option>
+                              <option value="+33">🇫🇷 +33</option>
+                              <option value="+966">🇸🇦 +966</option>
+                              <option value="+974">🇶🇦 +974</option>
+                              <option value="+27">🇿🇦 +27</option>
+                              <option value="+55">🇧🇷 +55</option>
+                              <option value="+52">🇲🇽 +52</option>
+                              <option value="+48">🇵🇱 +48</option>
+                            </select>
                           </div>
                           <input
                             name="phone"
                             type="tel"
                             inputMode="numeric"
-                            placeholder="10-digit WhatsApp number"
+                            placeholder="WhatsApp number"
                             autoComplete="tel-national"
-                            maxLength={10}
                             className={`flex-1 px-4 py-3 rounded-r-lg bg-white/10 border text-sm text-white placeholder:text-white/40 outline-none transition-colors duration-300 ${
                               touched.phone && fieldErrors.phone
                                 ? "border-red-400/60 focus:border-red-400"
                                 : "border-white/15 focus:border-white/30"
                             }`}
                             onBlur={handleBlur}
-                            onKeyDown={(e) => {
-                              // Allow backspace, tab, arrows, delete
-                              if (
-                                ["Backspace", "Tab", "ArrowLeft", "ArrowRight", "Delete"].includes(e.key)
-                              )
-                                return;
-                              // Block non-digit input
-                              if (!/^\d$/.test(e.key)) e.preventDefault();
-                            }}
                           />
                         </div>
                         {touched.phone && fieldErrors.phone && (
