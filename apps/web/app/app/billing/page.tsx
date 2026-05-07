@@ -34,38 +34,14 @@ export default async function BillingPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  // Recording access (paid add-on OR bundle-annual)
+  // Recording access (paid add-on for any active member)
   const recordingAccess = await prisma.recordingAccess.findFirst({
     where: { userId: user.id, isActive: true, expiresAt: { gt: new Date() } },
   });
 
-  const hasBundleAnnual = memberships.some(
-    (m) =>
-      m.status === "ACTIVE" &&
-      m.plan.product.type === "BUNDLE" &&
-      m.plan.interval === "ANNUAL"
-  );
-
-  const hasRecordingAccess = !!recordingAccess || hasBundleAnnual;
-
-  const bundleAnnualMembership = hasBundleAnnual
-    ? memberships.find(
-        (m) =>
-          m.status === "ACTIVE" &&
-          m.plan.product.type === "BUNDLE" &&
-          m.plan.interval === "ANNUAL"
-      )
-    : null;
-
-  // Check if user is eligible for recording add-on (has non-bundle annual membership)
-  const hasAnnualMembership =
-    !hasRecordingAccess &&
-    memberships.some(
-      (m) =>
-        m.status === "ACTIVE" &&
-        m.plan.interval === "ANNUAL" &&
-        m.plan.product.type !== "BUNDLE"
-    );
+  // Eligible to buy the add-on if they have ANY active membership and no current access
+  const hasActiveMembership = memberships.some((m) => m.status === "ACTIVE");
+  const canPurchaseAddon = !recordingAccess && hasActiveMembership;
 
   const activeMemberships = memberships.filter((m) => m.status === "ACTIVE");
   const displayMemberships = memberships;
@@ -134,37 +110,13 @@ export default async function BillingPage() {
                   View recordings →
                 </Link>
               </>
-            ) : hasBundleAnnual ? (
-              <>
-                <div className="text-lg font-semibold text-success">
-                  Included with Bundle
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Free with your Bundle Annual plan
-                  {bundleAnnualMembership?.periodEnd && (
-                    <>
-                      {" · until "}
-                      {bundleAnnualMembership.periodEnd.toLocaleDateString(
-                        "en-IN",
-                        { month: "short", day: "numeric", year: "numeric" }
-                      )}
-                    </>
-                  )}
-                </p>
-                <Link
-                  href="/app/recordings"
-                  className="text-xs text-primary hover:underline mt-2 inline-block"
-                >
-                  View recordings →
-                </Link>
-              </>
-            ) : hasAnnualMembership ? (
+            ) : canPurchaseAddon ? (
               <>
                 <div className="text-lg font-semibold text-muted-foreground">
                   Not purchased
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  ₹1,000/year: all recordings
+                  ₹1,000/year: all recordings for your plan
                 </p>
                 <RecordingAddonCheckout variant="compact" />
               </>
@@ -174,7 +126,7 @@ export default async function BillingPage() {
                   Not available
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Annual plan required
+                  Active subscription required
                 </p>
               </>
             )}

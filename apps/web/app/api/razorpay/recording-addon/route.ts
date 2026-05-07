@@ -28,27 +28,12 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         status: "ACTIVE",
       },
-      include: { plan: { include: { product: true } } },
     });
 
     if (!activeMembership) {
       return NextResponse.json(
         { error: "Recording access is available for active subscribers only" },
         { status: 403 }
-      );
-    }
-
-    // Bundle annual already includes free recording access
-    if (
-      activeMembership.plan.product.type === "BUNDLE" &&
-      activeMembership.plan.interval !== null
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Recording access is already included with your Bundle Annual plan",
-        },
-        { status: 409 }
       );
     }
 

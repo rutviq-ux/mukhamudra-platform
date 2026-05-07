@@ -58,7 +58,7 @@ const PRODUCTS: Product[] = [
       "3x/week live classes",
       "Choose your batch time",
       "WhatsApp community",
-      "Recording add-on eligible (annual)",
+      "Recording add-on eligible",
     ],
   },
   {
@@ -77,7 +77,7 @@ const PRODUCTS: Product[] = [
       "3x/week live classes",
       "Choose your batch time",
       "WhatsApp community",
-      "Recording add-on eligible (annual)",
+      "Recording add-on eligible",
     ],
   },
   {
@@ -284,7 +284,7 @@ export function PricingClient() {
                 </div>
                 <div>
                   <h3 className="text-lg font-medium">Recording Access Add-on</h3>
-                  <p className="text-sm text-muted-foreground">Available with annual plans only</p>
+                  <p className="text-sm text-muted-foreground">Available with all plans — monthly or annual</p>
                 </div>
                 <div className="ml-auto text-right">
                   <span className="text-2xl font-bold">₹1,000</span>

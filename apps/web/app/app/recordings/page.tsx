@@ -96,7 +96,7 @@ export default function RecordingsPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-light tracking-wide" style={{ fontFamily: "var(--font-display)" }}>Recordings</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {accessInfo?.source === "bundle-annual" ? "Included with Bundle Annual" : "Recording Add-on"}
+            Recording Add-on
             {accessInfo?.expiresAt && (
               <> · expires {new Date(accessInfo.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</>
             )}
