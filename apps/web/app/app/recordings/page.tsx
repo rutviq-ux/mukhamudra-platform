@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@ru/ui";
-import { Film, Lock, Calendar, Loader2 } from "lucide-react";
+import { Film, Lock, Play, Calendar, Loader2 } from "lucide-react";
 import { RecordingAddonCheckout } from "@/components/recording-addon-checkout";
 
 interface Recording {
@@ -171,14 +171,11 @@ export default function RecordingsPage() {
                   <Calendar className="w-3 h-3" />
                   {new Date(recording.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                 </div>
-                <video
-                  controls
-                  preload="none"
-                  className="w-full rounded-md mt-1"
-                  src={recording.url}
-                >
-                  Your browser does not support video playback.
-                </video>
+                <a href={recording.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-[#C4883A] hover:text-[#d4984a] transition-colors">
+                  <Play className="w-4 h-4" />
+                  Watch Recording
+                </a>
               </CardContent>
             </Card>
           ))}

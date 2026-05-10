@@ -37,7 +37,9 @@ async function getFilesFromFolder(drive: any, folderId: string, label: string) {
     name: file.name,
     createdAt: file.createdTime,
     size: file.size,
-    url: `/api/recordings/stream/${file.id}`,
+    url: `https://drive.google.com/file/d/${file.id}/view`,
+    embedUrl: `https://drive.google.com/file/d/${file.id}/preview`,
+    thumbnail: file.thumbnailLink,
     program: label,
   }));
 }
