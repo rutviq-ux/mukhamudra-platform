@@ -69,9 +69,9 @@ export function RecordingAddonCheckout({
         name: "Mukha Mudra",
         description: "Recording Access Add-on (1 year)",
         handler: () => {
-          // Payment successful — refresh to show updated access
-          router.push("/app/recordings");
-          router.refresh();
+          // Payment successful — redirect to recordings with a hint so the
+          // page retries while the webhook lands.
+          window.location.href = "/app/recordings?addon=1";
         },
         modal: {
           ondismiss: () => {
