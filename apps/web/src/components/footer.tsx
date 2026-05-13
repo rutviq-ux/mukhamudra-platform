@@ -18,7 +18,7 @@ const RESOURCE_LINKS = [
 const SOCIAL_LINKS = [
   {
     label: "Instagram",
-    href: "https://www.instagram.com/mukhamudra",
+    href: "https://www.instagram.com/rutviq/",
     icon: InstagramIcon,
   },
   {
