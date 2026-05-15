@@ -13,43 +13,43 @@ const EASE_GALLERY = [0.22, 1, 0.36, 1] as const;
 const CAROUSEL_SLIDES = [
   {
     src: "/carousel_images_t/IMG_3978.png",
-    alt: "Temple acupressure: activating energy points to release jaw tension",
-    caption: "Temple Acupressure",
+    alt: "Japanese Acupressure: activating energy points to release tension",
+    caption: "Japanese Acupressure",
   },
   {
     src: "/carousel_images_t/IMG_4037.png",
-    alt: "Brow bone knuckling: deep pressure technique to lift the forehead",
+    alt: "Brow lifting: deep pressure technique to lift the forehead",
     caption: "Brow Lifting",
   },
   {
     src: "/carousel_images_t/IMG_3996.png",
-    alt: "Gua Sha sculpting: contouring the cheekbone with a jade tool",
-    caption: "Gua Sha Sculpting",
+    alt: "Facial Lymphatic Drainage: gentle techniques to reduce puffiness",
+    caption: "Facial Lymphatic Drainage",
   },
   {
     src: "/carousel_images_t/IMG_4026.png",
-    alt: "Facial Gua Sha: smoothing the cheek with acupressure point activation",
-    caption: "Cheek Contouring",
+    alt: "Jaw Release: releasing tension from the jaw muscles",
+    caption: "Jaw Release",
   },
   {
     src: "/carousel_images_t/IMG_4030.png",
-    alt: "Temple Gua Sha: jade tool along the temporal muscle",
-    caption: "Temple Release",
+    alt: "Mukha Mudra: traditional facial gestures for inner balance",
+    caption: "Mukha Mudra",
   },
   {
     src: "/carousel_images_t/IMG_4045.png",
-    alt: "Dual Gua Sha: both tools sculpting the cheekbone area",
-    caption: "Dual Sculpting",
+    alt: "Osteopathic Technique: gentle manipulation for facial harmony",
+    caption: "Osteopathic Technique",
   },
   {
     src: "/carousel_images_t/IMG_4049.png",
-    alt: "Cheek activation: pinching technique to stimulate facial muscles",
-    caption: "Cheek Activation",
+    alt: "Shanmukhi Mudra: six-gates seal for sensory withdrawal",
+    caption: "Shanmukhi Mudra",
   },
   {
     src: "/carousel_images_t/IMG_4034.png",
-    alt: "Facial muscle lifting: pinch and lift technique for cheek volume",
-    caption: "Muscle Lifting",
+    alt: "Purnamukha Mudra: complete face gesture for rejuvenation",
+    caption: "Purnamukha Mudra",
   },
 ];
 
