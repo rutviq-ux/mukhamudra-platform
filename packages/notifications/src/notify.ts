@@ -5,6 +5,7 @@ import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { logMessage } from "./audit";
 import { sendPushForMessageLog } from "./send-push";
+import { sendWhatsApp } from "./send-whatsapp";
 
 const log = createLogger("notifications");
 
@@ -85,6 +86,16 @@ export async function queueNotification({
       { templateName, unresolved },
       "Template has unresolved variables — they will appear as literal text",
     );
+  }
+
+  // WhatsApp: send immediately via Cloud API (or queue for wa-bot fallback)
+  if (template.channel === "WHATSAPP" && to) {
+    await sendWhatsApp({
+      userId: user.id,
+      phone: to,
+      body,
+    });
+    return null; // sendWhatsApp handles its own logging
   }
 
   const logId = await logMessage({

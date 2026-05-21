@@ -24,12 +24,18 @@ const serverEnvSchema = z.object({
   LISTMONK_API_USER: z.string().min(1),
   LISTMONK_API_PASSWORD: z.string().min(1),
 
-  // WhatsApp Bot
+  // WhatsApp Bot (legacy whatsapp-web.js)
   WA_BOT_ENABLED: z
     .string()
     .transform((v) => v === "true")
     .default("false"),
   WA_BOT_SESSION_PATH: z.string().default("./wa-session"),
+
+  // WhatsApp Cloud API (official Meta Business API)
+  WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().min(1).optional(),
+  WHATSAPP_APP_SECRET: z.string().min(1).optional(),
 
   // Google Workspace (optional — feature-flagged by presence)
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().email().optional(),

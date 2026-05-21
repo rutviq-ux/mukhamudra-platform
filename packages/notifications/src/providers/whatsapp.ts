@@ -1,11 +1,11 @@
 // WhatsApp Provider Interface
-// Allows swapping between whatsapp-web.js and official WhatsApp Business API
+// Supports both the legacy whatsapp-web.js bot and the official WhatsApp Cloud API
 
 export interface WhatsAppMessage {
-  to: string; // Phone number with country code
+  to: string; // Phone number with country code (e.g. 919876543210)
   body: string;
   templateName?: string;
-  templateData?: Record<string, unknown>;
+  templateParams?: string[]; // Ordered positional params for Cloud API templates
 }
 
 export interface WhatsAppSendResult {
@@ -16,24 +16,13 @@ export interface WhatsAppSendResult {
 
 export interface WhatsAppProvider {
   name: string;
-  
-  /**
-   * Send a text message
-   */
   send(message: WhatsAppMessage): Promise<WhatsAppSendResult>;
-  
-  /**
-   * Check if this provider is ready (authenticated)
-   */
   isReady(): Promise<boolean>;
-  
-  /**
-   * Get the QR code for authentication (if applicable)
-   */
   getQRCode?(): Promise<string | null>;
 }
 
-// Console provider for development/testing
+// ─── Console provider (development / fallback) ───────────────────────────────
+
 export class ConsoleWhatsAppProvider implements WhatsAppProvider {
   name = "console";
 
@@ -50,30 +39,88 @@ export class ConsoleWhatsAppProvider implements WhatsAppProvider {
   }
 }
 
-// Placeholder for WhatsApp Business API (official)
-// To be implemented when migrating from whatsapp-web.js
+// ─── WhatsApp Cloud API (official Meta Business API) ─────────────────────────
+
+const GRAPH_API_VERSION = "v18.0";
+const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
+
 export class WhatsAppBusinessProvider implements WhatsAppProvider {
-  name = "whatsapp-business";
-  
-  private accessToken: string;
-  private phoneNumberId: string;
+  name = "whatsapp-cloud";
+
+  private readonly accessToken: string;
+  private readonly phoneNumberId: string;
 
   constructor(config: { accessToken: string; phoneNumberId: string }) {
     this.accessToken = config.accessToken;
     this.phoneNumberId = config.phoneNumberId;
   }
 
+  async isReady(): Promise<boolean> {
+    return !!this.accessToken && !!this.phoneNumberId;
+  }
+
   async send(message: WhatsAppMessage): Promise<WhatsAppSendResult> {
-    // TODO: Implement official WhatsApp Business API
-    // This is a placeholder for future migration
-    console.log("[WHATSAPP BUSINESS API - NOT IMPLEMENTED]", message);
+    const phone = message.to.replace(/[^0-9]/g, "");
+    if (!phone) {
+      return { success: false, error: "Invalid phone number" };
+    }
+
+    const url = `${GRAPH_API_BASE}/${this.phoneNumberId}/messages`;
+
+    const body = message.templateName
+      ? this.buildTemplatePayload(phone, message.templateName, message.templateParams ?? [])
+      : this.buildTextPayload(phone, message.body);
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json() as any;
+
+      if (!res.ok) {
+        const errMsg = data?.error?.message ?? `HTTP ${res.status}`;
+        console.error("[WhatsApp Cloud API] Send failed:", data);
+        return { success: false, error: errMsg };
+      }
+
+      const messageId = data?.messages?.[0]?.id;
+      return { success: true, messageId };
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errMsg };
+    }
+  }
+
+  private buildTextPayload(to: string, text: string) {
     return {
-      success: false,
-      error: "WhatsApp Business API not yet implemented. Use wa-bot service.",
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "text",
+      text: { preview_url: false, body: text },
     };
   }
 
-  async isReady(): Promise<boolean> {
-    return !!this.accessToken && !!this.phoneNumberId;
+  private buildTemplatePayload(to: string, templateName: string, params: string[]) {
+    const components = params.length > 0
+      ? [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }]
+      : [];
+
+    return {
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name: templateName,
+        language: { code: "en" },
+        components,
+      },
+    };
   }
 }
