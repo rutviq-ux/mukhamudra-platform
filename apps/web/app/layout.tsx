@@ -57,12 +57,21 @@ export const metadata: Metadata = {
       "Live face yoga sessions and daily pranayama classes. Join 100K+ practitioners.",
     type: "website",
     siteName: "Mukha Mudra",
+    images: [
+      {
+        url: "https://www.mukhamudra.com/og-image.jpg",
+        width: 1200,
+        height: 1200,
+        alt: "Mukha Mudra",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Mukha Mudra | Live Face Yoga & Pranayama",
     description:
       "Live face yoga sessions and daily pranayama classes. Join 100K+ practitioners.",
+    images: ["https://www.mukhamudra.com/og-image.jpg"],
   },
 };
 
