@@ -210,7 +210,7 @@ export function OnboardingForm({
   // Determine if "Continue" button should be disabled for current step
   const isNextDisabled =
     isPending ||
-    (currentStepDef.id === "profile" && !formData.name.trim()) ||
+    (currentStepDef.id === "profile" && (!formData.name.trim() || !formData.localPhone.trim())) ||
     (currentStepDef.id === "goals" && !formData.goal) ||
     (currentStepDef.id === "terms" && !formData.termsAccepted);
 
@@ -269,9 +269,7 @@ export function OnboardingForm({
                     <div className="space-y-2">
                       <Label htmlFor="phone">
                         Phone Number{" "}
-                        <span className="text-muted-foreground font-normal">
-                          (optional)
-                        </span>
+                        <span className="text-destructive">*</span>
                       </Label>
                       <div className="flex gap-2">
                         <select
@@ -294,14 +292,13 @@ export function OnboardingForm({
                           maxLength={15}
                           value={formData.localPhone}
                           onChange={(e) => {
-                            // Only allow digits and spaces
                             const cleaned = e.target.value.replace(/[^\d\s]/g, "");
                             setFormData({ ...formData, localPhone: cleaned });
                           }}
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        For WhatsApp session reminders &amp; account recovery
+                        Required for WhatsApp session reminders &amp; account recovery
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -384,12 +381,6 @@ export function OnboardingForm({
                         }
                       />
                     </div>
-                    {formData.whatsappOptIn && !formData.localPhone && (
-                      <p className="text-xs text-muted-foreground px-4">
-                        💡 Go back to Step 1 to add your phone number for
-                        WhatsApp reminders.
-                      </p>
-                    )}
                     <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                       <div className="flex items-start gap-3">
                         <Bell className="h-5 w-5 text-primary mt-0.5" />
@@ -675,11 +666,12 @@ function TermsContent() {
       <section>
         <h3 className="font-medium mb-2">7. Recording Access Add-on</h3>
         <p className="text-muted-foreground leading-relaxed">
-          The Recording Access add-on is available exclusively to annual plan
-          subscribers. It provides access to session recordings for one year from
-          the date of purchase. Recordings are hosted on Google Drive and
-          accessible through your member dashboard. The add-on does not
-          auto-renew and must be repurchased annually.
+          The Recording Access add-on is available to all active subscribers
+          (monthly or annual). It provides access to session recordings for one
+          year from the date of purchase. Recordings are accessible through your
+          member dashboard. The add-on does not auto-renew and must be
+          repurchased annually. You will only see recordings for the program(s)
+          you are subscribed to.
         </p>
       </section>
 
