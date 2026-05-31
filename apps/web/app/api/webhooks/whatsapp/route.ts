@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
+import { sendColdInquiryReply } from "@ru/notifications";
 
 const log = createLogger("webhook-whatsapp");
 
@@ -96,6 +97,9 @@ async function handleIncomingMessage(message: any, contact: any) {
   // Find the user by phone number
   const user = await prisma.user.findFirst({
     where: { phone: { endsWith: from.slice(-10) } },
+    include: {
+      memberships: { where: { status: "ACTIVE" }, take: 1 },
+    },
   });
 
   // Handle STOP / opt-out
@@ -121,6 +125,26 @@ async function handleIncomingMessage(message: any, contact: any) {
       log.info({ from, userId: user.id }, "User opted in to WhatsApp");
     }
     await sendCloudMessage(from, `Welcome back to Mukha Mudra, ${name}! 🙏 You are now subscribed to WhatsApp updates.`);
+    return;
+  }
+
+  // ─── Cold inquiry: non-member messaging for the first time ───
+  const isNonMember = !user || user.memberships.length === 0;
+  if (isNonMember) {
+    // Check if we've already sent them the cold inquiry reply
+    const alreadyReplied = await prisma.messageLog.findFirst({
+      where: {
+        to: from,
+        channel: "WHATSAPP",
+        body: { contains: "mukhamudra_cold_inquiry" },
+      },
+    });
+
+    if (!alreadyReplied) {
+      sendColdInquiryReply(from).catch((err) =>
+        log.error({ err, from }, "Failed to send cold inquiry auto-reply")
+      );
+    }
     return;
   }
 

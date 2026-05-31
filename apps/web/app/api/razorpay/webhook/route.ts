@@ -17,6 +17,11 @@ import {
   notifyPaymentFailed,
   notifyMembershipActivatedEmail,
   notifyMembershipCancelledEmail,
+  sendEnrollFaceYogaAnnual,
+  sendEnrollPranayamaAnnual,
+  sendEnrollBundleAnnual,
+  sendEnrollMonthly,
+  sendEnrollRecordingsAddon,
 } from "@ru/notifications";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { getSubscriptionPeriod } from "@/lib/memberships";
@@ -255,6 +260,9 @@ async function handlePaymentCaptured(payload: any) {
     }).catch((err) =>
       log.error({ err }, "Failed to queue recording addon notification")
     );
+    sendEnrollRecordingsAddon({ userId: result.userId }).catch((err) =>
+      log.error({ err }, "Failed to send recordings addon WhatsApp")
+    );
   } else if (result.status === "updated") {
     log.info({ orderId: result.orderId }, "Order paid, membership activated");
 
@@ -316,6 +324,29 @@ async function handlePaymentCaptured(payload: any) {
       }).catch((err) =>
         log.error({ err }, "Failed to emit subscription.activated sequence event")
       );
+
+      // ─── Send enrollment WhatsApp template based on plan ───
+      const slug = order.plan.slug;
+      const uid = order.userId;
+      const pEnd = result.periodEnd;
+
+      if (slug === "face-annual") {
+        sendEnrollFaceYogaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
+          log.error({ err }, "Failed to send Face Yoga Annual enrollment WA")
+        );
+      } else if (slug === "pranayama-annual") {
+        sendEnrollPranayamaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
+          log.error({ err }, "Failed to send Pranayama Annual enrollment WA")
+        );
+      } else if (slug === "bundle-annual") {
+        sendEnrollBundleAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
+          log.error({ err }, "Failed to send Bundle Annual enrollment WA")
+        );
+      } else if (["bundle-monthly", "face-monthly", "pranayama-monthly"].includes(slug)) {
+        sendEnrollMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
+          log.error({ err }, "Failed to send Monthly enrollment WA")
+        );
+      }
     }
   }
 }
@@ -436,6 +467,31 @@ async function handleSubscriptionActivated(payload: any) {
   }).catch((err) =>
     log.error({ err }, "Failed to queue membership activated email")
   );
+
+  // ─── Send enrollment WhatsApp template ───
+  if (currentPeriodEnd) {
+    const slug = membership.plan.slug;
+    const uid = membership.userId;
+    const pEnd = currentPeriodEnd;
+
+    if (slug === "face-annual") {
+      sendEnrollFaceYogaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
+        log.error({ err }, "Failed to send Face Yoga Annual enrollment WA")
+      );
+    } else if (slug === "pranayama-annual") {
+      sendEnrollPranayamaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
+        log.error({ err }, "Failed to send Pranayama Annual enrollment WA")
+      );
+    } else if (slug === "bundle-annual") {
+      sendEnrollBundleAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
+        log.error({ err }, "Failed to send Bundle Annual enrollment WA")
+      );
+    } else if (["bundle-monthly", "face-monthly", "pranayama-monthly"].includes(slug)) {
+      sendEnrollMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
+        log.error({ err }, "Failed to send Monthly enrollment WA")
+      );
+    }
+  }
 }
 
 async function handleSubscriptionCharged(payload: any) {

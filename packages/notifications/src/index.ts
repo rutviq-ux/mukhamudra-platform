@@ -7,3 +7,4 @@ export * from "./send-push";
 export * from "./group-actions";
 export * from "./sequence-events";
 export { sendWhatsApp } from "./send-whatsapp";
+export * from "./whatsapp-templates";
