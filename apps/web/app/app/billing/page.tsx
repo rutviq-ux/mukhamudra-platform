@@ -40,7 +40,11 @@ export default async function BillingPage() {
   });
 
   // Eligible to buy the add-on if they have ANY active membership and no current access
-  const hasActiveMembership = memberships.some((m) => m.status === "ACTIVE");
+  const hasActiveMembership = memberships.some(
+    (m) =>
+      m.status === "ACTIVE" &&
+      (m.periodEnd === null || m.periodEnd > new Date())
+  );
   const canPurchaseAddon = !recordingAccess && hasActiveMembership;
 
   const activeMemberships = memberships.filter((m) => m.status === "ACTIVE");
