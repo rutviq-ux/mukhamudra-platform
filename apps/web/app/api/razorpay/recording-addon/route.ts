@@ -22,15 +22,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check: user must have at least one ACTIVE membership that hasn't expired
+    // Check: user must have at least one ACTIVE membership
     const activeMembership = await prisma.membership.findFirst({
       where: {
         userId: user.id,
         status: "ACTIVE",
-        OR: [
-          { periodEnd: null },
-          { periodEnd: { gt: new Date() } },
-        ],
       },
     });
 

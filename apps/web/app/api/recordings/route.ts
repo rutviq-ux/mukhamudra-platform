@@ -59,13 +59,9 @@ export async function GET() {
     return NextResponse.json({ error: "No recording access" }, { status: 403 });
   }
 
-  // Determine which folders to fetch based on active non-expired memberships
+  // Determine which folders to fetch based on active memberships
   const memberships = await prisma.membership.findMany({
-    where: {
-      userId: user.id,
-      status: "ACTIVE",
-      OR: [{ periodEnd: null }, { periodEnd: { gt: new Date() } }],
-    },
+    where: { userId: user.id, status: "ACTIVE" },
     include: { plan: { include: { product: true } } },
   });
 
