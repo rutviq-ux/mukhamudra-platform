@@ -210,14 +210,34 @@ export async function sendEnrollRecordingsAddon(opts: {
 // ─── Cold inquiry auto-reply ──────────────────────────────────────────────────
 
 export async function sendColdInquiryReply(to: string) {
-  // No userId — this is a non-member messaging the number
-  await sendWhatsApp({
-    userId: "cold-inquiry",
-    phone: to,
-    body: "",
+  const cloud = new (await import("./providers/whatsapp")).WhatsAppBusinessProvider({
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN ?? "",
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
+  });
+
+  const result = await cloud.send({
+    to,
+    body: "mukhamudra_cold_inquiry",
     templateName: "mukhamudra_cold_inquiry",
     templateParams: [],
   });
 
-  log.info({ to }, "Sent cold inquiry auto-reply");
+  // Log with template name as body so we can check if already replied
+  const { prisma } = await import("@ru/db");
+  await prisma.messageLog.create({
+    data: {
+      channel: "WHATSAPP",
+      to,
+      body: "mukhamudra_cold_inquiry",
+      status: result.success ? "SENT" : "FAILED",
+      providerMessageId: result.messageId,
+      error: result.error,
+    },
+  }).catch((err) => log.error({ err }, "Failed to log cold inquiry message"));
+
+  if (!result.success) {
+    log.error({ to, error: result.error }, "Cold inquiry auto-reply failed");
+  } else {
+    log.info({ to }, "Sent cold inquiry auto-reply");
+  }
 }

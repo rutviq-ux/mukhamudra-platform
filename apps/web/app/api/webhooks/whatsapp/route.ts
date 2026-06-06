@@ -39,15 +39,23 @@ export async function POST(req: NextRequest) {
 
   // Verify the request came from Meta using the app secret
   const appSecret = process.env.WHATSAPP_APP_SECRET;
-  if (appSecret) {
+  if (appSecret && appSecret.length > 0) {
     const signature = req.headers.get("x-hub-signature-256") ?? "";
     const expected = `sha256=${crypto
       .createHmac("sha256", appSecret)
       .update(rawBody)
       .digest("hex")}`;
 
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
-      log.warn("WhatsApp webhook signature mismatch — rejecting");
+    try {
+      if (
+        signature.length !== expected.length ||
+        !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+      ) {
+        log.warn("WhatsApp webhook signature mismatch — rejecting");
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+    } catch {
+      log.warn("WhatsApp webhook signature check failed");
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
   }
@@ -133,7 +141,7 @@ async function handleIncomingMessage(message: any, contact: any) {
     where: {
       to: from,
       channel: "WHATSAPP",
-      body: { contains: "mukhamudra_cold_inquiry" },
+      body: "mukhamudra_cold_inquiry",
     },
   });
 
