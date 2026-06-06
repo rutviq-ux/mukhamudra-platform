@@ -128,23 +128,19 @@ async function handleIncomingMessage(message: any, contact: any) {
     return;
   }
 
-  // ─── Cold inquiry: non-member messaging for the first time ───
-  const isNonMember = !user || user.memberships.length === 0;
-  if (isNonMember) {
-    // Check if we've already sent them the cold inquiry reply
-    const alreadyReplied = await prisma.messageLog.findFirst({
-      where: {
-        to: from,
-        channel: "WHATSAPP",
-        body: { contains: "mukhamudra_cold_inquiry" },
-      },
-    });
+  // ─── Auto-reply: send once to anyone messaging for the first time ───
+  const alreadyReplied = await prisma.messageLog.findFirst({
+    where: {
+      to: from,
+      channel: "WHATSAPP",
+      body: { contains: "mukhamudra_cold_inquiry" },
+    },
+  });
 
-    if (!alreadyReplied) {
-      sendColdInquiryReply(from).catch((err) =>
-        log.error({ err, from }, "Failed to send cold inquiry auto-reply")
-      );
-    }
+  if (!alreadyReplied) {
+    sendColdInquiryReply(from).catch((err) =>
+      log.error({ err, from }, "Failed to send cold inquiry auto-reply")
+    );
     return;
   }
 
