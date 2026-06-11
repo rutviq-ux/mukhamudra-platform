@@ -215,12 +215,28 @@ export async function sendColdInquiryReply(to: string) {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
   });
 
-  const result = await cloud.send({
-    to,
-    body: "mukhamudra_cold_inquiry",
-    templateName: "mukhamudra_cold_inquiry",
-    templateParams: [],
-  });
+  // Use plain text until the mukhamudra_cold_inquiry template is approved by Meta
+  const body = `Namaste 🌿 This is Ru from Mukha Mudra — so glad you reached out 🫶🏻
+
+Here's a quick look at what we offer:
+
+🧘 Face Yoga — live classes, Mon / Wed / Fri 9 PM IST or 10 PM IST (pick your batch)
+
+🌬️ Pranayama — live classes, daily 8 AM IST or 9 AM IST (pick your batch)
+30 mins — 20 min practice + 10 min Q&A
+
+💰 Plans:
+₹3,000/year — Face Yoga OR Pranayama
+₹6,000/year — Face Yoga + Pranayama (bundle)
+₹1,111/month — Face Yoga + Pranayama
+
+All live, small group, on Google Meet. I know everyone by name 😇
+
+To sign up: www.mukhamudra.com
+
+If you have any questions, just reply here — I read everything personally 🌿`;
+
+  const result = await cloud.send({ to, body });
 
   // Log with template name as body so we can check if already replied
   const { prisma } = await import("@ru/db");
