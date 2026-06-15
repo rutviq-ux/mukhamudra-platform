@@ -313,16 +313,26 @@ export async function sendSessionReminders(): Promise<number> {
     const joinLink = session.joinUrl || "Check your dashboard for the link";
 
     for (const booking of session.bookings) {
-      const result = await queueNotification({
-        userId: booking.user.id,
-        templateName: "session_reminder",
-        variables: {
-          name: booking.user.name || "there",
-          session_type: sessionType,
-          join_link: joinLink,
-        },
+      // WhatsApp: use the approved class_reminder template (directs to dashboard)
+      const user = await prisma.user.findUnique({
+        where: { id: booking.user.id },
+        select: { name: true, phone: true, whatsappOptIn: true },
       });
-      if (result) sent++;
+
+      if (user?.phone && user.whatsappOptIn) {
+        await sendWhatsApp({
+          userId: booking.user.id,
+          phone: user.phone,
+          body: "",
+          templateName: "mukhamudra_class_reminder",
+          templateParams: [
+            user.name?.split(" ")[0] || "there",
+            sessionType,
+            `${process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com"}/app`,
+          ],
+        });
+        sent++;
+      }
 
       // Also send push notification (delivered directly via web-push)
       const pushLogId = await queueNotification({

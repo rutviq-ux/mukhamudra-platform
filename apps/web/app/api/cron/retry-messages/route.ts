@@ -23,6 +23,19 @@ async function handler(request: NextRequest) {
       orderBy: { createdAt: "asc" },
     });
 
+    // Abandon stale QUEUED messages that have exceeded max retries
+    await prisma.messageLog.updateMany({
+      where: {
+        status: "QUEUED",
+        createdAt: { lt: staleThreshold },
+        retryCount: { gte: MAX_RETRIES },
+      },
+      data: {
+        status: "FAILED",
+        error: "Abandoned after max retries",
+      },
+    });
+
     // Re-queue stale messages (bump retryCount so they're re-processed)
     if (staleMessages.length > 0) {
       for (const msg of staleMessages) {
