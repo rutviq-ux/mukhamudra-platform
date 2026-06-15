@@ -20,7 +20,9 @@ import {
   sendEnrollFaceYogaAnnual,
   sendEnrollPranayamaAnnual,
   sendEnrollBundleAnnual,
-  sendEnrollMonthly,
+  sendEnrollFaceYogaMonthly,
+  sendEnrollPranayamaMonthly,
+  sendEnrollBundleMonthly,
   sendEnrollRecordingsAddon,
 } from "@ru/notifications";
 import { verifyWebhookSignature } from "@/lib/razorpay";
@@ -342,9 +344,17 @@ async function handlePaymentCaptured(payload: any) {
         sendEnrollBundleAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
           log.error({ err }, "Failed to send Bundle Annual enrollment WA")
         );
-      } else if (["bundle-monthly", "face-monthly", "pranayama-monthly"].includes(slug)) {
-        sendEnrollMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-          log.error({ err }, "Failed to send Monthly enrollment WA")
+      } else if (slug === "bundle-monthly") {
+        sendEnrollBundleMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
+          log.error({ err }, "Failed to send Bundle Monthly enrollment WA")
+        );
+      } else if (slug === "face-monthly") {
+        sendEnrollFaceYogaMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
+          log.error({ err }, "Failed to send Face Yoga Monthly enrollment WA")
+        );
+      } else if (slug === "pranayama-monthly") {
+        sendEnrollPranayamaMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
+          log.error({ err }, "Failed to send Pranayama Monthly enrollment WA")
         );
       }
     }
@@ -486,9 +496,17 @@ async function handleSubscriptionActivated(payload: any) {
       sendEnrollBundleAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
         log.error({ err }, "Failed to send Bundle Annual enrollment WA")
       );
-    } else if (["bundle-monthly", "face-monthly", "pranayama-monthly"].includes(slug)) {
-      sendEnrollMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Monthly enrollment WA")
+    } else if (slug === "bundle-monthly") {
+      sendEnrollBundleMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
+        log.error({ err }, "Failed to send Bundle Monthly enrollment WA")
+      );
+    } else if (slug === "face-monthly") {
+      sendEnrollFaceYogaMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
+        log.error({ err }, "Failed to send Face Yoga Monthly enrollment WA")
+      );
+    } else if (slug === "pranayama-monthly") {
+      sendEnrollPranayamaMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
+        log.error({ err }, "Failed to send Pranayama Monthly enrollment WA")
       );
     }
   }

@@ -136,6 +136,24 @@ async function handleIncomingMessage(message: any, contact: any) {
     return;
   }
 
+  // ─── Handle LINK — send next class join URL ───
+  if (text === "link" && user && user.memberships.length > 0) {
+    const nextSession = await prisma.session.findFirst({
+      where: {
+        startsAt: { gt: new Date() },
+        bookings: { some: { userId: user.id } },
+      },
+      orderBy: { startsAt: "asc" },
+    });
+
+    if (nextSession?.joinUrl) {
+      await sendCloudMessage(from, `Here's your class link 🧘\n\n${nextSession.joinUrl}\n\nSee you soon! 🌿`);
+    } else {
+      await sendCloudMessage(from, "Your class link will be ready 5 minutes before the session starts. Check your dashboard: https://www.mukhamudra.com/app 🌿");
+    }
+    return;
+  }
+
   // ─── Auto-reply: send once to anyone messaging for the first time ───
   const alreadyReplied = await prisma.messageLog.findFirst({
     where: {

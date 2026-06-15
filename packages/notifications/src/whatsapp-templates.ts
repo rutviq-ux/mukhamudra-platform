@@ -154,9 +154,69 @@ export async function sendEnrollBundleAnnual(opts: {
   log.info({ userId: opts.userId }, "Sent Bundle Annual enrollment WA");
 }
 
-// ─── Template D: Monthly (Bundle or standalone) ───────────────────────────────
+// ─── Template D1: Face Yoga Monthly ──────────────────────────────────────────
 
-export async function sendEnrollMonthly(opts: {
+export async function sendEnrollFaceYogaMonthly(opts: {
+  userId: string;
+  periodEnd: Date;
+}) {
+  const user = await prisma.user.findUnique({
+    where: { id: opts.userId },
+    select: { name: true, phone: true, whatsappOptIn: true },
+  });
+  if (!user?.phone || !user.whatsappOptIn) return;
+
+  const batchTime = await getBatchTime("FACE_YOGA");
+
+  await sendWhatsApp({
+    userId: opts.userId,
+    phone: user.phone,
+    body: "",
+    templateName: "mukhamudra_enroll_faceyoga_monthly",
+    templateParams: [
+      firstName(user.name),
+      fmtDate(opts.periodEnd),
+      batchTime,
+      DASHBOARD_URL,
+    ],
+  });
+
+  log.info({ userId: opts.userId }, "Sent Face Yoga Monthly enrollment WA");
+}
+
+// ─── Template D2: Pranayama Monthly ─────────────────────────────────────────
+
+export async function sendEnrollPranayamaMonthly(opts: {
+  userId: string;
+  periodEnd: Date;
+}) {
+  const user = await prisma.user.findUnique({
+    where: { id: opts.userId },
+    select: { name: true, phone: true, whatsappOptIn: true },
+  });
+  if (!user?.phone || !user.whatsappOptIn) return;
+
+  const batchTime = await getBatchTime("PRANAYAMA");
+
+  await sendWhatsApp({
+    userId: opts.userId,
+    phone: user.phone,
+    body: "",
+    templateName: "mukhamudra_enroll_pranayama_monthly",
+    templateParams: [
+      firstName(user.name),
+      fmtDate(opts.periodEnd),
+      batchTime,
+      DASHBOARD_URL,
+    ],
+  });
+
+  log.info({ userId: opts.userId }, "Sent Pranayama Monthly enrollment WA");
+}
+
+// ─── Template D3: Bundle Monthly ────────────────────────────────────────────
+
+export async function sendEnrollBundleMonthly(opts: {
   userId: string;
   periodEnd: Date;
 }) {
@@ -172,7 +232,7 @@ export async function sendEnrollMonthly(opts: {
     userId: opts.userId,
     phone: user.phone,
     body: "",
-    templateName: "mukhamudra_enroll_monthly",
+    templateName: "mukhamudra_enroll_bundle_monthly",
     templateParams: [
       firstName(user.name),
       fmtDate(opts.periodEnd),
@@ -182,7 +242,7 @@ export async function sendEnrollMonthly(opts: {
     ],
   });
 
-  log.info({ userId: opts.userId }, "Sent Monthly enrollment WA");
+  log.info({ userId: opts.userId }, "Sent Bundle Monthly enrollment WA");
 }
 
 // ─── Template E: Recordings Add-on ───────────────────────────────────────────
@@ -215,30 +275,13 @@ export async function sendColdInquiryReply(to: string) {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
   });
 
-  // Use plain text until the mukhamudra_cold_inquiry template is approved by Meta
-  const body = `Namaste 🌿 This is Ru from Mukha Mudra — so glad you reached out 🫶🏻
+  const result = await cloud.send({
+    to,
+    body: "mukhamudra_cold_inquiry",
+    templateName: "mukhamudra_cold_inquiry",
+    templateParams: [],
+  });
 
-Here's a quick look at what we offer:
-
-🧘 Face Yoga — live classes, Mon / Wed / Fri 9 PM IST or 10 PM IST (pick your batch)
-
-🌬️ Pranayama — live classes, daily 8 AM IST or 9 AM IST (pick your batch)
-30 mins — 20 min practice + 10 min Q&A
-
-💰 Plans:
-₹3,000/year — Face Yoga OR Pranayama
-₹6,000/year — Face Yoga + Pranayama (bundle)
-₹1,111/month — Face Yoga + Pranayama
-
-All live, small group, on Google Meet. I know everyone by name 😇
-
-To sign up: www.mukhamudra.com
-
-If you have any questions, just reply here — I read everything personally 🌿`;
-
-  const result = await cloud.send({ to, body });
-
-  // Log with template name as body so we can check if already replied
   const { prisma } = await import("@ru/db");
   await prisma.messageLog.create({
     data: {
