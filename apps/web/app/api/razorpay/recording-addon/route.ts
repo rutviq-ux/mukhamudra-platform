@@ -10,7 +10,11 @@ const log = createLogger("api:razorpay:recording-addon");
  * POST /api/razorpay/recording-addon
  *
  * Creates a Razorpay order for the recording add-on (₹1,000/year).
- * Eligibility: user must have an ACTIVE membership (monthly or annual) and no active recording access.
+ * Eligibility: user must have an ACTIVE membership on an ANNUAL plan whose
+ * periodEnd has not passed (current Razorpay-linked or legacy/manually-
+ * imported) and no active recording access. Monthly-only members, and
+ * members whose annual term has lapsed but whose status hasn't yet been
+ * flipped by the nightly expire-memberships cron, are not eligible.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,17 +26,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check: user must have at least one ACTIVE membership
+    // Check: user must have at least one ACTIVE membership on an ANNUAL plan
+    // whose periodEnd has not passed. We check periodEnd directly (not just
+    // status) because the expire-memberships cron only runs nightly, leaving
+    // a window where a lapsed annual term still shows status "ACTIVE". This
+    // covers both current Razorpay-linked annual subscriptions and legacy/
+    // manually-imported annual memberships (e.g. pre-Razorpay GPay payments
+    // seeded via scripts/seed-member.ts), since both are linked to a Plan
+    // with interval "ANNUAL" and have periodEnd set. Monthly plans, and any
+    // annual membership past its periodEnd, are intentionally excluded.
     const activeMembership = await prisma.membership.findFirst({
       where: {
         userId: user.id,
         status: "ACTIVE",
+        plan: { interval: "ANNUAL" },
+        periodEnd: { gte: new Date() },
       },
     });
 
     if (!activeMembership) {
       return NextResponse.json(
-        { error: "Recording access is available for active subscribers only" },
+        { error: "Recording access is available for current annual members only" },
         { status: 403 }
       );
     }
