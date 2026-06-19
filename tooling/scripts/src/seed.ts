@@ -1123,6 +1123,7 @@ async function main() {
     update: {
       subject: "Payment Confirmed — Mukha Mudra",
       body: "{{name}},\n\nYour payment has been received. Thank you.\n\nOrder: #{{order_id}}\nPlan: {{plan_name}}\nAmount: ₹{{amount}}\n\nYou may now book your sessions from your dashboard.\n\nNamaste,\nMukha Mudra",
+      isTransactional: true,
     },
     create: {
       channel: "EMAIL",
@@ -1131,6 +1132,7 @@ async function main() {
       body: "{{name}},\n\nYour payment has been received. Thank you.\n\nOrder: #{{order_id}}\nPlan: {{plan_name}}\nAmount: ₹{{amount}}\n\nYou may now book your sessions from your dashboard.\n\nNamaste,\nMukha Mudra",
       variables: ["name", "order_id", "plan_name", "amount"],
       isActive: true,
+      isTransactional: true,
     },
   });
 
@@ -1139,6 +1141,7 @@ async function main() {
     update: {
       subject: "Session Confirmed — {{session_type}} on {{date}}",
       body: "{{name}},\n\nYour booking is confirmed.\n\nSession: {{session_type}}\nDate: {{date}}\nTime: {{time}}\n\nYou will receive the join link before the session begins.\n\nNamaste,\nMukha Mudra",
+      isTransactional: true,
     },
     create: {
       channel: "EMAIL",
@@ -1147,6 +1150,7 @@ async function main() {
       body: "{{name}},\n\nYour booking is confirmed.\n\nSession: {{session_type}}\nDate: {{date}}\nTime: {{time}}\n\nYou will receive the join link before the session begins.\n\nNamaste,\nMukha Mudra",
       variables: ["name", "session_type", "date", "time"],
       isActive: true,
+      isTransactional: true,
     },
   });
 
@@ -1203,6 +1207,7 @@ async function main() {
     update: {
       subject: "Your {{plan_name}} Subscription is Active — Mukha Mudra",
       body: "{{name}},\n\nYour {{plan_name}} subscription is now active.\n\nValid until: {{end_date}}\n\nYou may join any scheduled session from your dashboard. We recommend establishing a daily routine for the best results.\n\nNamaste,\nMukha Mudra",
+      isTransactional: true,
     },
     create: {
       channel: "EMAIL",
@@ -1211,6 +1216,7 @@ async function main() {
       body: "{{name}},\n\nYour {{plan_name}} subscription is now active.\n\nValid until: {{end_date}}\n\nYou may join any scheduled session from your dashboard. We recommend establishing a daily routine for the best results.\n\nNamaste,\nMukha Mudra",
       variables: ["name", "plan_name", "end_date"],
       isActive: true,
+      isTransactional: true,
     },
   });
 

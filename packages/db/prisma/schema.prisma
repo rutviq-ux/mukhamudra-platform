@@ -538,6 +538,11 @@ model MessageTemplate {
   body        String          @db.Text
   variables   String[]        // List of template variables
   isActive    Boolean         @default(true)
+  // Transactional messages (payment confirmations, membership activation,
+  // password resets, etc.) are sent regardless of marketing opt-in, since
+  // they are service messages the user needs, not marketing. Marketing
+  // templates (default) continue to respect marketingOptIn.
+  isTransactional Boolean     @default(false)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 

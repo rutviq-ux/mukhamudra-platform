@@ -53,8 +53,15 @@ export async function queueNotification({
   }
   if (!user) return null;
 
-  // Check opt-in
-  if (template.channel === "EMAIL" && !user.marketingOptIn) return null;
+  // Check opt-in. Transactional templates (payment confirmations, membership
+  // activation, etc.) bypass marketing opt-in — they are service messages the
+  // user needs regardless. Only marketing templates respect marketingOptIn.
+  if (
+    template.channel === "EMAIL" &&
+    !template.isTransactional &&
+    !user.marketingOptIn
+  )
+    return null;
   if (template.channel === "WHATSAPP" && !user.whatsappOptIn) return null;
   if (template.channel === "PUSH" && !user.pushOptIn) return null;
 
