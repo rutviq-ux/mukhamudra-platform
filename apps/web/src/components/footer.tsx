@@ -121,10 +121,10 @@ export function Footer() {
                   </a>
                 ))}
                 <a
-                  href="mailto:hello@mukhamudra.com"
+                  href="mailto:rutviq@mukhamudra.com"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-500"
                 >
-                  hello@mukhamudra.com
+                  rutviq@mukhamudra.com
                 </a>
               </nav>
             </div>

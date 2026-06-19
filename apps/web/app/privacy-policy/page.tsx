@@ -38,7 +38,7 @@ const SECTIONS = [
     items: [
       "Security Measures: We use industry-standard encryption, secure servers, and access controls to protect your personal information.",
       "Retention Period: We retain your data for as long as your account is active or as needed to provide services, comply with legal obligations, and resolve disputes.",
-      "Account Deletion: You may request deletion of your account and associated data by contacting us at hello@mukhamudra.com. Some data may be retained as required by law.",
+      "Account Deletion: You may request deletion of your account and associated data by contacting us at rutviq@mukhamudra.com. Some data may be retained as required by law.",
     ],
   },
   {
@@ -99,10 +99,10 @@ export default function PrivacyPolicyPage() {
             For questions about this policy, contact us via WhatsApp or email
             at{" "}
             <a
-              href="mailto:hello@mukhamudra.com"
+              href="mailto:rutviq@mukhamudra.com"
               className="text-primary hover:underline"
             >
-              hello@mukhamudra.com
+              rutviq@mukhamudra.com
             </a>
           </p>
         </div>

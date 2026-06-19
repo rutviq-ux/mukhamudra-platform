@@ -86,10 +86,10 @@ export default function TermsPage() {
           <p className="text-sm text-muted-foreground">
             For questions about these terms, contact us via WhatsApp or email at{" "}
             <a
-              href="mailto:hello@mukhamudra.com"
+              href="mailto:rutviq@mukhamudra.com"
               className="text-primary hover:underline"
             >
-              hello@mukhamudra.com
+              rutviq@mukhamudra.com
             </a>
           </p>
         </div>
