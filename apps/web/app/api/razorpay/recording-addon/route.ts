@@ -27,20 +27,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Check: user must have at least one ACTIVE membership on an ANNUAL plan
-    // whose periodEnd has not passed. We check periodEnd directly (not just
-    // status) because the expire-memberships cron only runs nightly, leaving
-    // a window where a lapsed annual term still shows status "ACTIVE". This
-    // covers both current Razorpay-linked annual subscriptions and legacy/
-    // manually-imported annual memberships (e.g. pre-Razorpay GPay payments
-    // seeded via scripts/seed-member.ts), since both are linked to a Plan
-    // with interval "ANNUAL" and have periodEnd set. Monthly plans, and any
-    // annual membership past its periodEnd, are intentionally excluded.
+    // whose term has not yet lapsed. periodEnd is nullable — it's set on the
+    // subscription.charged webhook, so a recently-created membership may not
+    // have it populated yet. We therefore allow periodEnd to be null (trust
+    // the ACTIVE status) OR gte now. We only block when periodEnd is
+    // explicitly set and already in the past (the gap the nightly cron hasn't
+    // closed yet).
     const activeMembership = await prisma.membership.findFirst({
       where: {
         userId: user.id,
         status: "ACTIVE",
         plan: { interval: "ANNUAL" },
-        periodEnd: { gte: new Date() },
+        OR: [
+          { periodEnd: null },
+          { periodEnd: { gte: new Date() } },
+        ],
       },
     });
 

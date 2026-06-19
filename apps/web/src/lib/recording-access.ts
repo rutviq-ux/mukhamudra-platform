@@ -30,12 +30,17 @@ export async function getRecordingAccessInfo(
   }
 
   // The add-on alone isn't enough — the underlying membership package must
-  // still be currently active.
+  // still be currently active. periodEnd is nullable (set on the
+  // subscription.charged webhook), so we allow null OR gte now. We only
+  // revoke access when periodEnd is explicitly set and already in the past.
   const activeMembership = await prisma.membership.findFirst({
     where: {
       userId,
       status: "ACTIVE",
-      periodEnd: { gte: new Date() },
+      OR: [
+        { periodEnd: null },
+        { periodEnd: { gte: new Date() } },
+      ],
     },
   });
 

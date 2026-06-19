@@ -72,9 +72,24 @@ describe("/api/razorpay/recording-addon eligibility", () => {
         userId: "user_1",
         status: "ACTIVE",
         plan: { interval: "ANNUAL" },
-        periodEnd: { gte: expect.any(Date) },
+        OR: [{ periodEnd: null }, { periodEnd: { gte: expect.any(Date) } }],
       },
     });
+  });
+
+  it("allows an active annual member with null periodEnd (webhook not yet fired)", async () => {
+    // Razorpay sets periodEnd on the subscription.charged webhook; a member
+    // who just subscribed may have periodEnd === null before that fires.
+    // Status ACTIVE is sufficient when periodEnd is null.
+    mockFindFirst.mockResolvedValue({
+      id: "m2",
+      status: "ACTIVE",
+      periodEnd: null,
+      plan: { interval: "ANNUAL" },
+    });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
   });
 
   it("allows a legacy GPay-era annual member with no Razorpay subscription", async () => {
