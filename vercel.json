@@ -43,6 +43,10 @@
     {
       "path": "/api/cron/sync-subscription-periods",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/send-whatsapp",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

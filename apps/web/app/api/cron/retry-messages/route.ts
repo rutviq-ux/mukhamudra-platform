@@ -52,6 +52,7 @@ async function handler(request: NextRequest) {
     const failedMessages = await prisma.messageLog.findMany({
       where: {
         status: "FAILED",
+        channel: "EMAIL", // WhatsApp retries are handled by send-whatsapp cron
         createdAt: { gte: dayAgo },
         retryCount: { lt: MAX_RETRIES },
       },
