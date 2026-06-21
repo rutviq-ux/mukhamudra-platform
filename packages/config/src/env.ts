@@ -19,10 +19,14 @@ const serverEnvSchema = z.object({
   GHOST_CONTENT_API_KEY: z.string().min(1),
   GHOST_ADMIN_API_KEY: z.string().optional(),
 
-  // Listmonk
-  LISTMONK_URL: z.string().url(),
-  LISTMONK_API_USER: z.string().min(1),
-  LISTMONK_API_PASSWORD: z.string().min(1),
+  // Email — Resend (hosted transactional, primary)
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_FROM_EMAIL: z.string().min(1).optional().default("Mukha Mudra <rutviq@mukhamudra.com>"),
+
+  // Listmonk (legacy / optional — Resend is the primary sender)
+  LISTMONK_URL: z.string().url().optional(),
+  LISTMONK_API_USER: z.string().min(1).optional(),
+  LISTMONK_API_PASSWORD: z.string().min(1).optional(),
 
   // WhatsApp Bot (legacy whatsapp-web.js)
   WA_BOT_ENABLED: z

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@ru/db";
 import { createLogger, getServerEnv } from "@ru/config";
-import { ListmonkEmailProvider, updateMessageStatus } from "@ru/notifications";
+import {
+  ResendEmailProvider,
+  ListmonkEmailProvider,
+  ConsoleEmailProvider,
+  updateMessageStatus,
+  type EmailProvider,
+} from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
 
 const log = createLogger("cron:send-emails");
@@ -9,11 +15,25 @@ const log = createLogger("cron:send-emails");
 async function handler(request: NextRequest) {
   try {
     const env = getServerEnv();
-    const provider = new ListmonkEmailProvider({
-      url: env.LISTMONK_URL,
-      username: env.LISTMONK_API_USER,
-      password: env.LISTMONK_API_PASSWORD,
-    });
+
+    // Resend is the primary transactional sender. Fall back to Listmonk only
+    // if Resend isn't configured, and to a console no-op as a last resort so
+    // the cron never crashes on missing config.
+    let provider: EmailProvider;
+    if (env.RESEND_API_KEY) {
+      provider = new ResendEmailProvider({
+        apiKey: env.RESEND_API_KEY,
+        defaultFrom: env.RESEND_FROM_EMAIL,
+      });
+    } else if (env.LISTMONK_URL && env.LISTMONK_API_USER && env.LISTMONK_API_PASSWORD) {
+      provider = new ListmonkEmailProvider({
+        url: env.LISTMONK_URL,
+        username: env.LISTMONK_API_USER,
+        password: env.LISTMONK_API_PASSWORD,
+      });
+    } else {
+      provider = new ConsoleEmailProvider();
+    }
 
     // Fetch queued email messages
     const messages = await prisma.messageLog.findMany({

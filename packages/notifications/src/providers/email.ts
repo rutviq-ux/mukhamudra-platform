@@ -114,6 +114,81 @@ export class ListmonkEmailProvider implements EmailProvider {
   }
 }
 
+// Resend implementation (hosted transactional email)
+// Uses Resend's REST API directly — no SDK dependency required.
+export class ResendEmailProvider implements EmailProvider {
+  name = "resend";
+
+  private apiKey: string;
+  private defaultFrom: string;
+
+  constructor(config: { apiKey: string; defaultFrom: string }) {
+    this.apiKey = config.apiKey;
+    this.defaultFrom = config.defaultFrom;
+  }
+
+  async send(message: EmailMessage): Promise<EmailSendResult> {
+    try {
+      const html = message.html ?? (message.text ? undefined : "");
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: message.from || this.defaultFrom,
+          to: message.to,
+          subject: message.subject,
+          ...(html !== undefined ? { html } : {}),
+          ...(message.text ? { text: message.text } : {}),
+          ...(message.replyTo ? { reply_to: message.replyTo } : {}),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        return { success: false, error: `Resend ${response.status}: ${error}` };
+      }
+
+      const data = (await response.json()) as { id?: string };
+      return { success: true, messageId: data.id };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  async sendTemplate(
+    to: string,
+    _templateId: string,
+    _data: Record<string, unknown>
+  ): Promise<EmailSendResult> {
+    // Templates in this system are rendered before send (subject/body are
+    // already filled in queueNotification), so there's no provider-side
+    // template to resolve. This path is unused for Resend.
+    return {
+      success: false,
+      error: "sendTemplate not supported for Resend; send pre-rendered html instead",
+    };
+  }
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      // Resend has no public health endpoint; a lightweight authenticated
+      // call to list domains confirms the API key is valid and reachable.
+      const response = await fetch("https://api.resend.com/domains", {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
 // Console provider for development/testing
 export class ConsoleEmailProvider implements EmailProvider {
   name = "console";

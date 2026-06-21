@@ -1,4 +1,5 @@
 export * from "./providers/email";
+export * from "./flush-emails";
 export * from "./providers/whatsapp";
 export * from "./providers/push";
 export * from "./audit";

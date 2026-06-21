@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@ru/db";
 import { messageTemplateSchema, sendTestMessageSchema, getServerEnv } from "@ru/config";
 import { createAdminAction } from "@/lib/actions/safe-action";
-import { ListmonkEmailProvider, logMessage } from "@ru/notifications";
+import {
+  ResendEmailProvider,
+  ListmonkEmailProvider,
+  ConsoleEmailProvider,
+  logMessage,
+  type EmailProvider,
+} from "@ru/notifications";
 
 const updateTemplateSchema = messageTemplateSchema.extend({ id: z.string().cuid() });
 const deleteTemplateSchema = z.object({ id: z.string().cuid() });
@@ -170,11 +176,25 @@ export const sendTestMessage = createAdminAction("sendTestMessage", {
 
     if (channel === "EMAIL") {
       const env = getServerEnv();
-      const provider = new ListmonkEmailProvider({
-        url: env.LISTMONK_URL,
-        username: env.LISTMONK_API_USER,
-        password: env.LISTMONK_API_PASSWORD,
-      });
+      let provider: EmailProvider;
+      if (env.RESEND_API_KEY) {
+        provider = new ResendEmailProvider({
+          apiKey: env.RESEND_API_KEY,
+          defaultFrom: env.RESEND_FROM_EMAIL,
+        });
+      } else if (
+        env.LISTMONK_URL &&
+        env.LISTMONK_API_USER &&
+        env.LISTMONK_API_PASSWORD
+      ) {
+        provider = new ListmonkEmailProvider({
+          url: env.LISTMONK_URL,
+          username: env.LISTMONK_API_USER,
+          password: env.LISTMONK_API_PASSWORD,
+        });
+      } else {
+        provider = new ConsoleEmailProvider();
+      }
       const result = await provider.send({
         to: testRecipient,
         subject,

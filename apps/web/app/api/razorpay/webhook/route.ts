@@ -24,6 +24,7 @@ import {
   sendEnrollPranayamaMonthly,
   sendEnrollBundleMonthly,
   sendEnrollRecordingsAddon,
+  flushQueuedEmailsForUser,
 } from "@ru/notifications";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { getSubscriptionPeriod } from "@/lib/memberships";
@@ -325,6 +326,13 @@ async function handlePaymentCaptured(payload: any) {
         userId: order.userId,
       }).catch((err) =>
         log.error({ err }, "Failed to emit subscription.activated sequence event")
+      );
+
+      // Send the just-queued confirmation/activation emails immediately
+      // instead of waiting for the 5-minute send-emails cron. The cron stays
+      // as the fallback for anything this flush can't deliver right away.
+      flushQueuedEmailsForUser(order.userId).catch((err) =>
+        log.error({ err }, "Failed to flush confirmation emails")
       );
 
       // ─── Send enrollment WhatsApp template based on plan ───
