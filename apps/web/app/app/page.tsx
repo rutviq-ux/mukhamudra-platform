@@ -220,6 +220,7 @@ export default async function MemberDashboardPage() {
                   hour: "2-digit",
                   minute: "2-digit",
                   timeZone: userTimezone,
+                  timeZoneName: "short",
                 })}
                 {" \u00b7 "}
                 {upcomingBookings[0]!.session.product?.name ||
@@ -399,6 +400,7 @@ export default async function MemberDashboardPage() {
                           hour: "2-digit",
                           minute: "2-digit",
                           timeZone: userTimezone,
+                          timeZoneName: "short",
                         })}
                       </p>
                     </div>

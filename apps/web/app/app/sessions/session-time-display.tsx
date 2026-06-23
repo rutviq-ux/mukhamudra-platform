@@ -21,6 +21,7 @@ function formatTimeInTz(date: Date, tz: string): string {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: tz,
+    timeZoneName: "short",
   });
 }
 
