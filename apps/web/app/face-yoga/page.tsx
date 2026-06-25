@@ -49,7 +49,7 @@ const BUNDLE = {
     "All Face Yoga + Pranayama sessions",
     "Access to all 4 batches",
     "WhatsApp community for both",
-    "Free recording add-on for 12 months",
+    "Recording add-on eligible (₹1,000/yr)",
   ],
 };
 
@@ -68,7 +68,6 @@ export default function FaceYogaPage() {
     isLoaded,
     isSignedIn,
     currentPlan,
-    isBundle,
     showRecordingAddon,
     ctaLabel,
     handleSubscribe,
@@ -124,7 +123,6 @@ export default function FaceYogaPage() {
             }`}
             onClick={() => {
               setSelectedPlan(BUNDLE.slug);
-              setAddRecording(false);
               setError(null);
               trackEvent.planSelected(BUNDLE.slug);
             }}
@@ -142,7 +140,7 @@ export default function FaceYogaPage() {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Get both for ₹{BUNDLE.price.toLocaleString("en-IN")}/year, plus free recording add-on for all 12 months
+                    Get both for ₹{BUNDLE.price.toLocaleString("en-IN")}/year
                   </p>
                 </div>
               </div>
@@ -302,7 +300,6 @@ export default function FaceYogaPage() {
                     }`}
                     onClick={() => {
                       setSelectedPlan(plan.slug);
-                      if (isBundlePlan) setAddRecording(false);
                       setError(null);
                       trackEvent.planSelected(plan.slug);
                     }}

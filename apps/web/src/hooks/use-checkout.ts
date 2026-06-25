@@ -64,7 +64,9 @@ export function useCheckout({
 
   const currentPlan = allPlans.find((p) => p.slug === selectedPlan);
   const isBundle = selectedPlan?.startsWith("bundle-");
-  const showRecordingAddon = selectedPlan && !isBundle;
+  // Recording add-on is offered on every plan, including the bundle —
+  // bundle members are annual and eligible to purchase it like everyone else.
+  const showRecordingAddon = !!selectedPlan;
   const isLoading = loadingPhase !== null;
 
   const startCheckout = useCallback(
@@ -74,7 +76,6 @@ export function useCheckout({
       trackEvent.checkoutOpened("razorpay");
 
       const plan = allPlans.find((p) => p.slug === planSlug);
-      const isBundlePlan = planSlug.startsWith("bundle-");
 
       try {
         const res = await fetch("/api/razorpay/subscription", {
@@ -98,7 +99,7 @@ export function useCheckout({
           return;
         }
 
-        if (wantRecording && !isBundlePlan) {
+        if (wantRecording) {
           sessionStorage.setItem("mm-recording-addon-intent", "true");
         }
 
