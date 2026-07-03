@@ -23,6 +23,7 @@ export default function RecordingsPage() {
   const [accessInfo, setAccessInfo] = useState<AccessInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [noAccess, setNoAccess] = useState(false);
+  const [notLoggedIn, setNotLoggedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,6 +41,11 @@ export default function RecordingsPage() {
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
           const res = await fetch("/api/recordings", { cache: "no-store" });
+
+          if (res.status === 401) {
+            if (!cancelled) setNotLoggedIn(true);
+            return;
+          }
 
           if (res.status === 403) {
             if (attempt < maxAttempts - 1) {
@@ -91,6 +97,34 @@ export default function RecordingsPage() {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (notLoggedIn) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-light tracking-wide" style={{ fontFamily: "var(--font-display)" }}>Recordings</h1>
+          <p className="text-muted-foreground mt-2 text-sm">Revisit your sessions anytime</p>
+        </div>
+        <Card className="void-card max-w-lg mx-auto text-center">
+          <CardHeader>
+            <div className="mx-auto w-12 h-12 rounded-full bg-[rgba(196,136,58,0.1)] flex items-center justify-center mb-3">
+              <Lock className="w-6 h-6 text-[#C4883A]" />
+            </div>
+            <CardTitle className="text-xl" style={{ fontFamily: "var(--font-display)" }}>Sign in to continue</CardTitle>
+            <CardDescription>
+              Please sign in to access your recordings.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <a href="/auth/sign-in?redirect_url=/app/recordings"
+              className="inline-flex items-center justify-center rounded-md bg-[#C4883A] text-white px-6 py-2 text-sm font-medium hover:bg-[#d4984a] transition-colors">
+              Sign in
+            </a>
+          </CardContent>
+        </Card>
       </div>
     );
   }

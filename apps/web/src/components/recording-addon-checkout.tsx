@@ -49,7 +49,7 @@ export function RecordingAddonCheckout({
 
       if (res.status === 401) {
         // Not logged in — redirect to sign-in, come back after
-        router.push("/auth/sign-in?redirect_url=/pricing");
+        router.push("/auth/sign-in?redirect_url=/app/recordings");
         return;
       }
 
