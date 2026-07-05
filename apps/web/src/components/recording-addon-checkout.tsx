@@ -56,7 +56,7 @@ export function RecordingAddonCheckout({
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong");
+        setError(data.error || "Unable to start checkout. Make sure you have an active annual plan and are signed in.");
         setLoading(false);
         return;
       }

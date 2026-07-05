@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { submitLead } from "@/actions/leads";
@@ -40,7 +40,6 @@ function formatPhoneForApi(phone: string, countryCode: string): string {
 }
 
 export default function TrialPage() {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [unlocked, setUnlocked] = useState(false);
   const [hasEnded, setHasEnded] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -90,10 +89,6 @@ export default function TrialPage() {
 
       setUnlocked(true);
 
-      // Auto-play after a brief moment
-      setTimeout(() => {
-        videoRef.current?.play().catch(() => {});
-      }, 600);
     });
   };
 
@@ -109,22 +104,19 @@ export default function TrialPage() {
       <section className="relative">
         <div className="relative w-full max-w-5xl mx-auto mt-24 sm:mt-28 px-4 sm:px-8">
           <div className="relative aspect-video rounded-xl overflow-hidden bg-black/40">
-            {/* Video — always rendered but hidden behind gate */}
-            <video
-              ref={videoRef}
-              controls
-              playsInline
-              preload="metadata"
-              poster="/hero_videos/poster.png"
-              onEnded={() => setHasEnded(true)}
-              className="w-full h-full object-cover"
-              style={{ display: unlocked ? "block" : "none" }}
-            >
-              <source
-                src="/hero_videos/trial_session.mp4"
-                type="video/mp4"
+            {/* Trial video — Google Drive embed */}
+            {unlocked && (
+              <iframe
+                src="https://drive.google.com/file/d/1LpQ_SQnGw6NZjcRDBkuCvL6Z4E1tXGNI/preview"
+                allow="autoplay"
+                allowFullScreen
+                className="w-full h-full"
+                style={{ border: "none" }}
+                onLoad={() => {
+                  // Auto-play is handled by the Drive embed's allow="autoplay"
+                }}
               />
-            </video>
+            )}
 
             {/* Placeholder when not yet unlocked */}
             {!unlocked && (

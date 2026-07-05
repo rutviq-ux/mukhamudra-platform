@@ -123,10 +123,10 @@ export default async function BillingPage() {
             ) : (
               <>
                 <div className="text-lg font-semibold text-muted-foreground">
-                  Not available
+                  Not eligible
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Active subscription required
+                  An active annual plan is required to add recording access
                 </p>
               </>
             )}
