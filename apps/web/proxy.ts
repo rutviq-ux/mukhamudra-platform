@@ -81,6 +81,7 @@ const isPublicRoute = createRouteMatcher([
   "/face-yoga",
   "/pranayama",
   "/trial",
+  "/faq",
   "/blog(.*)",
   "/checkout(.*)",
   "/auth(.*)",
