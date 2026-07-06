@@ -13,7 +13,8 @@ interface RecordingAccessResult {
  * currently active (non-expired) membership. The add-on rides on top of an
  * active package — if the underlying membership expires or lapses, access
  * is revoked immediately even if the add-on's own expiresAt (1 year from
- * purchase) hasn't been reached yet. We check membership periodEnd directly
+ * purchase) hasn't been reached yet. Applies to members of any interval
+ * (monthly or annual) and any payment source. We check membership periodEnd directly
  * here rather than relying solely on status, for the same reason as the
  * purchase route: the expire-memberships cron only runs nightly.
  */
@@ -29,18 +30,16 @@ export async function getRecordingAccessInfo(
     return { hasAccess: false, expiresAt: null, source: null };
   }
 
-  // The add-on alone isn't enough — the underlying membership package must
-  // still be currently active. periodEnd is nullable (set on the
-  // subscription.charged webhook), so we allow null OR gte now. We only
-  // revoke access when periodEnd is explicitly set and already in the past.
+  // The add-on alone isn't enough — the underlying membership must still be
+  // currently active. We require periodEnd to be set AND in the future, so
+  // access is automatically cut off the moment a subscription expires (any
+  // interval, any payment source). This is intentionally strict: no
+  // open-ended access for memberships lacking an end date.
   const activeMembership = await prisma.membership.findFirst({
     where: {
       userId,
       status: "ACTIVE",
-      OR: [
-        { periodEnd: null },
-        { periodEnd: { gte: new Date() } },
-      ],
+      periodEnd: { gte: new Date() },
     },
   });
 

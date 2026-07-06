@@ -10,11 +10,14 @@ const log = createLogger("api:razorpay:recording-addon");
  * POST /api/razorpay/recording-addon
  *
  * Creates a Razorpay order for the recording add-on (₹1,000/year).
- * Eligibility: user must have an ACTIVE membership on an ANNUAL plan whose
- * periodEnd has not passed (current Razorpay-linked or legacy/manually-
- * imported) and no active recording access. Monthly-only members, and
- * members whose annual term has lapsed but whose status hasn't yet been
- * flipped by the nightly expire-memberships cron, are not eligible.
+ * Eligibility: user must have an ACTIVE membership of ANY interval (monthly
+ * or annual) whose periodEnd is in the future, and no existing active
+ * recording access. This covers members regardless of how they originally
+ * paid (online via Razorpay, or legacy offline via GPay/pre-website) — the
+ * only requirement is a current, non-expired subscription with a known end
+ * date. Members whose term has lapsed (periodEnd in the past) are not
+ * eligible, even if the nightly expire-memberships cron hasn't yet flipped
+ * their status.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -26,28 +29,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check: user must have at least one ACTIVE membership on an ANNUAL plan
-    // whose term has not yet lapsed. periodEnd is nullable — it's set on the
-    // subscription.charged webhook, so a recently-created membership may not
-    // have it populated yet. We therefore allow periodEnd to be null (trust
-    // the ACTIVE status) OR gte now. We only block when periodEnd is
-    // explicitly set and already in the past (the gap the nightly cron hasn't
-    // closed yet).
+    // Check: user must have at least one ACTIVE membership (any interval —
+    // monthly or annual) whose subscription period is still current. We
+    // require periodEnd to be set AND in the future: this both auto-cuts off
+    // expired members and works for legacy/offline members, all of whom carry
+    // a periodEnd. Members with no periodEnd at all are not treated as active
+    // for purchasing purposes, since we can't verify their term is current.
     const activeMembership = await prisma.membership.findFirst({
       where: {
         userId: user.id,
         status: "ACTIVE",
-        plan: { interval: "ANNUAL" },
-        OR: [
-          { periodEnd: null },
-          { periodEnd: { gte: new Date() } },
-        ],
+        periodEnd: { gte: new Date() },
       },
     });
 
     if (!activeMembership) {
       return NextResponse.json(
-        { error: "Recording access is available for current annual members only" },
+        {
+          error:
+            "Recording access requires an active membership. Please make sure your subscription is current, or renew to continue.",
+        },
         { status: 403 }
       );
     }

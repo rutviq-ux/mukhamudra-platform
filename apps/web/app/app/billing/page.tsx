@@ -39,8 +39,13 @@ export default async function BillingPage() {
     where: { userId: user.id, isActive: true, expiresAt: { gt: new Date() } },
   });
 
-  // Eligible to buy the add-on if they have ANY active membership and no current access
-  const hasActiveMembership = memberships.some((m) => m.status === "ACTIVE");
+  // Eligible to buy the add-on if they have any current membership (any
+  // interval) whose period hasn't expired, and no existing access. Matches
+  // the /api/razorpay/recording-addon eligibility rule.
+  const now = new Date();
+  const hasActiveMembership = memberships.some(
+    (m) => m.status === "ACTIVE" && m.periodEnd && m.periodEnd >= now
+  );
   const canPurchaseAddon = !recordingAccess && hasActiveMembership;
 
   const activeMemberships = memberships.filter((m) => m.status === "ACTIVE");
@@ -126,7 +131,7 @@ export default async function BillingPage() {
                   Not eligible
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  An active annual plan is required to add recording access
+                  An active membership is required to add recording access
                 </p>
               </>
             )}

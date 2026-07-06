@@ -143,7 +143,7 @@ export default function RecordingsPage() {
             </div>
             <CardTitle className="text-xl" style={{ fontFamily: "var(--font-display)" }}>Recording Access</CardTitle>
             <CardDescription>
-              Recording access is ₹1,000/year and is available to all active annual members (Face Yoga, Pranayama, or Bundle). Sign in and make sure you have an active annual plan, then add access below.
+              Recording access is ₹1,000/year and is available to all active members (monthly or annual). Sign in and make sure your subscription is current, then add access below.
             </CardDescription>
           </CardHeader>
           <CardContent>
