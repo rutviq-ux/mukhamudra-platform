@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const DRIVE_FILE_ID = "1LpQ_SQnGw6NZjcRDBkuCvL6Z4E1tXGNI";
+const YOUTUBE_VIDEO_ID = "8GgP8bS0qW0";
 
 export default function TrialPage() {
   return (
@@ -9,8 +9,9 @@ export default function TrialPage() {
         <div className="relative w-full max-w-5xl mx-auto mt-24 sm:mt-28 px-4 sm:px-8">
           <div className="relative aspect-video rounded-xl overflow-hidden bg-black/40">
             <iframe
-              src={`https://drive.google.com/file/d/${DRIVE_FILE_ID}/preview`}
-              allow="autoplay"
+              src={`https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}`}
+              title="Mukha Mudra trial session"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               className="w-full h-full"
               style={{ border: "none" }}

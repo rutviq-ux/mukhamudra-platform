@@ -9,6 +9,7 @@ const PRODUCT_LINKS = [
 ];
 
 const RESOURCE_LINKS = [
+  { label: "FAQ", href: "/faq" },
   { label: "Blog", href: "/blog" },
   { label: "Terms", href: "/terms" },
   { label: "Privacy Policy", href: "/privacy-policy" },
