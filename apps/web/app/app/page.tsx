@@ -11,6 +11,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+// Convert "HH:mm" (24h) batch time to a friendly "h:mm AM/PM" label.
+function formatBatchTime(hhmm: string): string {
+  const parts = hhmm.split(":");
+  const h = parseInt(parts[0] ?? "", 10);
+  const m = parseInt(parts[1] ?? "", 10);
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
+}
+
 export default async function MemberDashboardPage() {
   const user = await getCurrentUser();
   if (!user) return null;
@@ -48,6 +59,46 @@ export default async function MemberDashboardPage() {
   const recordingAccess = await prisma.recordingAccess.findFirst({
     where: { userId: user.id, isActive: true, expiresAt: { gt: new Date() } },
   });
+
+  // Weekly schedule: active batches for the products this member is subscribed to
+  const subscribedProductTypes = new Set<string>();
+  for (const m of memberships) {
+    const t = m.plan.product.type;
+    if (t === "BUNDLE") {
+      subscribedProductTypes.add("FACE_YOGA");
+      subscribedProductTypes.add("PRANAYAMA");
+    } else {
+      subscribedProductTypes.add(t);
+    }
+  }
+
+  const scheduleBatches = subscribedProductTypes.size
+    ? await prisma.batch.findMany({
+        where: {
+          isActive: true,
+          product: { type: { in: Array.from(subscribedProductTypes) as any } },
+        },
+        include: { product: { select: { type: true, name: true } } },
+        orderBy: { startTime: "asc" },
+      })
+    : [];
+
+  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const DAY_NAMES_FULL = [
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+  ];
+
+  // Today's day-of-week in IST (batches are scheduled in IST)
+  const istDayStr = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    timeZone: "Asia/Kolkata",
+  });
+  const todayDow = DAY_NAMES_FULL.indexOf(istDayStr);
+
+  // Which subscribed batches run today
+  const todaysClasses = scheduleBatches.filter((b) =>
+    b.daysOfWeek.includes(todayDow)
+  );
 
   // Get upcoming bookings
   const upcomingBookings = await prisma.booking.findMany({
@@ -103,12 +154,23 @@ export default async function MemberDashboardPage() {
               <p className="text-xs text-muted-foreground mt-1.5">
                 {faceYogaMembership?.plan.name}
               </p>
+              {faceYogaMembership?.periodStart && (
+                <p className="text-xs text-muted-foreground/80 mt-1">
+                  Started{" "}
+                  {faceYogaMembership.periodStart.toLocaleDateString("en-IN", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
               {faceYogaMembership?.periodEnd && (
-                <p className="text-[0.65rem] text-muted-foreground/60 mt-0.5">
-                  Renews{" "}
+                <p className="text-xs text-muted-foreground/80 mt-0.5">
+                  {faceYogaMembership.status === "ACTIVE" ? "Renews" : "Ends"}{" "}
                   {faceYogaMembership.periodEnd.toLocaleDateString("en-IN", {
                     month: "short",
                     day: "numeric",
+                    year: "numeric",
                   })}
                 </p>
               )}
@@ -159,12 +221,23 @@ export default async function MemberDashboardPage() {
               <p className="text-xs text-muted-foreground mt-1.5">
                 {pranayamaMembership?.plan.name}
               </p>
+              {pranayamaMembership?.periodStart && (
+                <p className="text-xs text-muted-foreground/80 mt-1">
+                  Started{" "}
+                  {pranayamaMembership.periodStart.toLocaleDateString("en-IN", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
               {pranayamaMembership?.periodEnd && (
-                <p className="text-[0.65rem] text-muted-foreground/60 mt-0.5">
-                  Renews{" "}
+                <p className="text-xs text-muted-foreground/80 mt-0.5">
+                  {pranayamaMembership.status === "ACTIVE" ? "Renews" : "Ends"}{" "}
                   {pranayamaMembership.periodEnd.toLocaleDateString("en-IN", {
                     month: "short",
                     day: "numeric",
+                    year: "numeric",
                   })}
                 </p>
               )}
@@ -321,6 +394,132 @@ export default async function MemberDashboardPage() {
                 View recordings
                 <ArrowRight className="h-3 w-3" />
               </Link>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Today's class */}
+      {todaysClasses.length > 0 && (
+        <div
+          className="animate-[reveal-up_0.6s_ease_both] mb-8"
+          style={{ animationDelay: "0.37s" }}
+        >
+          <Card glass>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-accent/10">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                </div>
+                <span
+                  className="text-lg font-light"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  Today&rsquo;s Classes
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2.5">
+                {todaysClasses.map((b) => (
+                  <div
+                    key={b.id}
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-muted/30 border border-border/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-[0.6rem] uppercase tracking-wider px-2 py-0.5 rounded ${
+                          b.product.type === "FACE_YOGA"
+                            ? "bg-accent/15 text-accent"
+                            : "bg-primary/15 text-primary"
+                        }`}
+                      >
+                        {b.product.name}
+                      </span>
+                      <span className="text-sm font-medium">{b.name}</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {formatBatchTime(b.startTime)} IST
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Weekly schedule */}
+      {scheduleBatches.length > 0 && (
+        <div
+          className="animate-[reveal-up_0.6s_ease_both] mb-8"
+          style={{ animationDelay: "0.38s" }}
+        >
+          <Card glass>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-muted">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <span
+                  className="text-lg font-light"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  Weekly Schedule
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2.5">
+                {scheduleBatches.map((b) => (
+                  <div
+                    key={b.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl bg-muted/30 border border-border/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-[0.6rem] uppercase tracking-wider px-2 py-0.5 rounded ${
+                          b.product.type === "FACE_YOGA"
+                            ? "bg-accent/15 text-accent"
+                            : "bg-primary/15 text-primary"
+                        }`}
+                      >
+                        {b.product.name}
+                      </span>
+                      <span className="text-sm font-medium">{b.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="flex gap-1">
+                        {b.daysOfWeek
+                          .slice()
+                          .sort((a, z) => a - z)
+                          .map((d) => (
+                            <span
+                              key={d}
+                              className={`px-1.5 py-0.5 rounded ${
+                                d === todayDow
+                                  ? "bg-accent/20 text-accent font-medium"
+                                  : "bg-muted"
+                              }`}
+                            >
+                              {DAY_NAMES[d]}
+                            </span>
+                          ))}
+                      </span>
+                      <span className="font-medium text-foreground/70 ml-1">
+                        {formatBatchTime(b.startTime)} IST
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[0.65rem] text-muted-foreground/50 mt-3">
+                All times shown in IST. Book individual sessions from the{" "}
+                <Link href="/app/sessions" className="text-primary hover:underline">
+                  sessions page
+                </Link>
+                .
+              </p>
             </CardContent>
           </Card>
         </div>

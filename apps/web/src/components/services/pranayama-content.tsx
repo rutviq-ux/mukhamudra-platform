@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Image from "next/image";
 
 import { Button } from "@ru/ui";
@@ -89,80 +88,6 @@ const TESTIMONIALS = [
     role: "Pranayama annual member",
   },
 ];
-
-const FAQS = [
-  // Timeline & Early Changes
-  {
-    q: "How long does it take to see actual results?",
-    a: "Rewiring your nervous system requires dedication. Clinical studies show it takes about 12 weeks of regular practice to see significant changes in stress levels and heart health. We recommend a consistent routine for 2 to 3 months to fully experience the internal shift.",
-  },
-  {
-    q: "What changes will I notice first?",
-    a: "Most people first experience a profound sense of mental calmness and a zen state. Physically, you may notice better sleep, improved digestion, and normalized breathing patterns. Results vary based on your unique lifestyle and energetic blockages.",
-  },
-  // The Science of Stress & Speed
-  {
-    q: "Why do some people see results faster than others?",
-    a: "While diet and sleep play a role, your emotional baseline is the biggest factor. Chronic stress creates cortisol, which is clinically proven to break down the collagen in your skin. By mastering your breath, you lower cortisol and stop this degradation, accelerating your physical results.",
-  },
-  // Daily Practice & Long-Term Strategy
-  {
-    q: "How much time do I need to commit daily?",
-    a: "Our live sessions are 30 minutes, providing a complete and balanced routine. However, even a 10-minute daily practice before bed can significantly calm your nervous system and prepare your body for cellular repair.",
-  },
-  {
-    q: "How should I approach the practice in the long run?",
-    a: "To maintain results, you must progress systematically through stages. We focus on one chakra per month, starting at the Ajna (Command Center) to safely manage internal energies. Consistent daily practice is the only way to convert subtle energy into physical radiance.",
-  },
-  {
-    q: "What happens if I stop practicing?",
-    a: "Your nervous system will gradually lose its rest-and-digest dominance. Without the daily practice, stress will spike your cortisol again, resuming the breakdown of collagen and stress-induced aging. Continuous practice is key to maintaining your Slow Beauty Glow.",
-  },
-  // Safety & Techniques
-  {
-    q: "Are energy locks (Bandhas) and breath retention dangerous?",
-    a: "No. When guided correctly, these techniques are deeply healing. Bandhas act as an internal pump that massages your organs and stimulates the nervous system. Rather than straining your body, this process helps remove stagnant blood and heals internal organs.",
-  },
-];
-
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div
-      className="border-b border-border last:border-b-0 cursor-pointer group"
-      onClick={() => setOpen(!open)}
-    >
-      <div className="flex items-center justify-between py-5 px-1">
-        <h3 className="text-base font-medium group-hover:text-primary transition-colors duration-500 pr-8">
-          {q}
-        </h3>
-        <motion.span
-          animate={{ rotate: open ? 45 : 0 }}
-          transition={{ duration: 0.3 }}
-          className="text-muted-foreground text-lg flex-shrink-0"
-        >
-          +
-        </motion.span>
-      </div>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.4, ease: EASE }}
-            className="overflow-hidden"
-          >
-            <p className="text-sm text-muted-foreground pb-5 px-1 leading-relaxed">
-              {a}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 export function PranayamaContent() {
   return (
@@ -495,37 +420,18 @@ export function PranayamaContent() {
         </div>
       </section>
 
-      {/* -- FAQ -- */}
-      <section id="faq" className="aura-bg relative py-20 md:py-28 px-6 section-warm">
-        <div className="aura-bg__img">
-          <img src="/visual-library/aura/2.jpeg" alt="" aria-hidden="true" loading="lazy" />
-        </div>
-        <div className="absolute inset-0 grain-overlay pointer-events-none z-[1]" />
-
-        <div className="max-w-3xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: EASE }}
-            className="text-center mb-12"
+      {/* -- FAQ link -- */}
+      <section className="relative py-16 px-6 text-center">
+        <div className="max-w-2xl mx-auto">
+          <p className="text-muted-foreground mb-4">
+            Have questions about the practice, results, or safety?
+          </p>
+          <a
+            href="/faq"
+            className="inline-flex items-center gap-2 text-sm uppercase tracking-[0.15em] text-primary hover:text-primary/80 transition-colors"
           >
-            <div className="tag-pill uppercase tracking-[0.25em] mx-auto mb-5">
-              FAQ
-            </div>
-            <h2
-              className="text-3xl md:text-4xl font-light"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Common questions
-            </h2>
-          </motion.div>
-
-          <div className="void-card px-6 md:px-8">
-            {FAQS.map((faq) => (
-              <FaqItem key={faq.q} q={faq.q} a={faq.a} />
-            ))}
-          </div>
+            Read our FAQ &rarr;
+          </a>
         </div>
       </section>
 

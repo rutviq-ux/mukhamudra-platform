@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Image from "next/image";
 
 import { Button } from "@ru/ui";
@@ -76,88 +75,6 @@ const TESTIMONIALS = [
     role: "Face Yoga annual member",
   },
 ];
-
-const FAQS = [
-  // Getting Started & Expectations
-  {
-    q: "How long does it take to see actual results?",
-    a: "Mukha Mudra is a dedicated routine (like a gym for your face) rather than a quick fix. Commit to consistent practice for at least 2 to 3 months to truly remodel your facial architecture. Short stints of a few weeks are often not enough to produce highly visible, permanent results.",
-  },
-  {
-    q: "What changes will I notice first?",
-    a: "Most people first notice a shift in their facial structure: a lifting effect, reduced puffiness, and more defined contours as deep tension is released. Because this is an inside-out approach, the exact timeline and results vary based on your genetics and habits.",
-  },
-  // Factors Influencing Progress
-  {
-    q: "Why do some people see results faster than others?",
-    a: "Age and lifestyle are major factors. Younger individuals often have faster cellular turnover, while older practitioners may take more time to see profound changes. However, the biggest factor is your emotional landscape.",
-  },
-  {
-    q: "How do my emotions affect my face?",
-    a: "Your face reflects your internal state. Chronic stress spikes cortisol, which is clinically proven to break down Type I collagen. Constant anxiety can lead to hardened expressions that physically tighten the face, making emotional mastery through Pranayama essential for faster results.",
-  },
-  // Daily Practice & Maintenance
-  {
-    q: "How much time do I need to commit daily?",
-    a: "We recommend a 10-minute daily workout. Even in this short time, you move stagnant energy (Prana), boost circulation, and keep your facial architecture toned. At the very least, try to dedicate time for one focused session per week.",
-  },
-  {
-    q: "How should I approach the practice in the long run?",
-    a: "Focus on consistency and variety. Just like a spiritual practice (Sadhana), daily repetition helps your fascia retain structural memory. You should also surprise your facial network by incorporating different movements rather than repeating the same stretch forever.",
-  },
-  {
-    q: "What happens if I stop practicing?",
-    a: "Your face will gradually return to its previous baseline position as daily stress and gravity take over. While your skin won't suddenly sag worse than before, the active lift and radiant glow will fade. This is why we view Mukha Mudra as a continuous lifestyle ritual.",
-  },
-  // Safety & Myths
-  {
-    q: "Will excessive pulling stretch my skin or cause it to sag?",
-    a: "No. It is a myth that manipulating the face causes sagging. Mukha Mudra uses rhythmic, controlled stimulation that is clinically proven to activate fibroblasts, which actually boosts natural elastin and collagen production.",
-  },
-  {
-    q: "Can Face Yoga stretch the skin permanently?",
-    a: "Absolutely not. The skin is incredibly resilient. Targeted mechanical stimulation makes the skin firmer and healthier over time. In reality, it is a lack of movement and muscle mobility that causes tissues to weaken and lead to sagging or stretch marks.",
-  },
-];
-
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div
-      className="border-b border-border last:border-b-0 cursor-pointer group"
-      onClick={() => setOpen(!open)}
-    >
-      <div className="flex items-center justify-between py-5 px-1">
-        <h3 className="text-base font-medium group-hover:text-accent transition-colors duration-500 pr-8">
-          {q}
-        </h3>
-        <motion.span
-          animate={{ rotate: open ? 45 : 0 }}
-          transition={{ duration: 0.3 }}
-          className="text-muted-foreground text-lg flex-shrink-0"
-        >
-          +
-        </motion.span>
-      </div>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.4, ease: EASE }}
-            className="overflow-hidden"
-          >
-            <p className="text-sm text-muted-foreground pb-5 px-1 leading-relaxed">
-              {a}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 export function FaceYogaContent() {
   return (
@@ -475,37 +392,18 @@ export function FaceYogaContent() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
-      <section id="faq" className="aura-bg relative py-20 md:py-28 px-6 section-warm">
-        <div className="aura-bg__img">
-          <img src="/visual-library/aura/4.jpeg" alt="" aria-hidden="true" loading="lazy" />
-        </div>
-        <div className="absolute inset-0 grain-overlay pointer-events-none z-[1]" />
-
-        <div className="max-w-3xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: EASE }}
-            className="text-center mb-12"
+      {/* ── FAQ link ── */}
+      <section className="relative py-16 px-6 text-center">
+        <div className="max-w-2xl mx-auto">
+          <p className="text-muted-foreground mb-4">
+            Have questions about the practice, results, or safety?
+          </p>
+          <a
+            href="/faq"
+            className="inline-flex items-center gap-2 text-sm uppercase tracking-[0.15em] text-accent hover:text-accent/80 transition-colors"
           >
-            <div className="tag-pill uppercase tracking-[0.25em] mx-auto mb-5">
-              FAQ
-            </div>
-            <h2
-              className="text-3xl md:text-4xl font-light"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Common questions
-            </h2>
-          </motion.div>
-
-          <div className="void-card px-6 md:px-8">
-            {FAQS.map((faq) => (
-              <FaqItem key={faq.q} q={faq.q} a={faq.a} />
-            ))}
-          </div>
+            Read our FAQ &rarr;
+          </a>
         </div>
       </section>
 
