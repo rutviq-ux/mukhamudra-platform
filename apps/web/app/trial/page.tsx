@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const YOUTUBE_VIDEO_ID = "8GgP8bS0qW0";
+const YOUTUBE_VIDEO_ID = "aEG2lSN3lHM";
 
 export default function TrialPage() {
   return (
