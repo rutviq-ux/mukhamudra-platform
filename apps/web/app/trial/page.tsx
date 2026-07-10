@@ -9,10 +9,12 @@ export default function TrialPage() {
         <div className="relative w-full max-w-5xl mx-auto mt-24 sm:mt-28 px-4 sm:px-8">
           <div className="relative aspect-video rounded-xl overflow-hidden bg-black/40">
             <iframe
-              src={`https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}`}
+              src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_VIDEO_ID}?rel=0&modestbranding=1&playsinline=1`}
               title="Mukha Mudra trial session"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
+              loading="lazy"
               className="w-full h-full"
               style={{ border: "none" }}
             />
