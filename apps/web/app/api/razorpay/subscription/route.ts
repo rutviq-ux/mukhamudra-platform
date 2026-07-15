@@ -6,8 +6,12 @@ import {
   validateRequest,
   createLogger,
 } from "@ru/config";
-import { createRazorpaySubscription, createRazorpayOrder } from "@/lib/razorpay";
+import {
+  createRazorpaySubscription,
+  createRazorpayOrder,
+} from "@/lib/razorpay";
 import { getCurrentUser } from "@/lib/auth";
+import { getPostHogServer } from "@/lib/posthog-server";
 
 const log = createLogger("api:razorpay:subscription");
 
@@ -18,7 +22,7 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json(
         { error: validation.error, errors: validation.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const { planSlug, termsAccepted, autoRenew } = validation.data;
@@ -28,7 +32,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: "Sign in to continue" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -47,16 +51,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!plan || !plan.isActive || plan.type !== "SUBSCRIPTION") {
-      return NextResponse.json(
-        { error: "Plan not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
     if (!plan.razorpayPlanId) {
       return NextResponse.json(
         { error: "Subscription plan not configured" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     if (existingMembership?.status === "ACTIVE") {
       return NextResponse.json(
         { error: "You already have an active subscription for this plan" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -90,11 +91,12 @@ export async function POST(request: NextRequest) {
           },
         });
       } catch (rzpError: unknown) {
-        const errMsg = rzpError instanceof Error ? rzpError.message : String(rzpError);
+        const errMsg =
+          rzpError instanceof Error ? rzpError.message : String(rzpError);
         log.error({ error: errMsg }, "Razorpay order creation failed");
         return NextResponse.json(
           { error: "Payment provider error. Please try again." },
-          { status: 502 }
+          { status: 502 },
         );
       }
 
@@ -132,11 +134,12 @@ export async function POST(request: NextRequest) {
           },
         });
       } catch (rzpError: unknown) {
-        const errMsg = rzpError instanceof Error ? rzpError.message : String(rzpError);
+        const errMsg =
+          rzpError instanceof Error ? rzpError.message : String(rzpError);
         log.error({ error: errMsg }, "Razorpay subscription creation failed");
         return NextResponse.json(
           { error: "Payment provider error. Please try again." },
-          { status: 502 }
+          { status: 502 },
         );
       }
 
@@ -162,12 +165,26 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    const posthog = getPostHogServer();
+    posthog.capture({
+      distinctId: user.id,
+      event: "checkout_initiated",
+      properties: {
+        plan_slug: planSlug,
+        plan_name: plan.name,
+        auto_renew: autoRenew !== false,
+        amount_paise: plan.amountPaise,
+        interval: plan.interval,
+      },
+    });
+    await posthog.flush();
+
     return NextResponse.json(responsePayload);
   } catch (error) {
     log.error({ err: error }, "Failed to create subscription");
     return NextResponse.json(
       { error: "Failed to create subscription" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

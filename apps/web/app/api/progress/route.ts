@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@ru/db";
 import { getCurrentUser } from "@/lib/auth";
-import { progressUploadSchema, validateRequest, createLogger } from "@ru/config";
+import {
+  progressUploadSchema,
+  validateRequest,
+  createLogger,
+} from "@ru/config";
 import path from "path";
 import { promises as fs } from "fs";
 import crypto from "crypto";
+import { getPostHogServer } from "@/lib/posthog-server";
 
 const log = createLogger("api:progress");
 
@@ -46,14 +51,14 @@ export async function POST(request: NextRequest) {
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: "Unsupported file type" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: "File too large (max 5MB)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -69,13 +74,24 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json(
         { error: validation.error, errors: validation.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const ext = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
+    const ext =
+      file.type === "image/jpeg"
+        ? "jpg"
+        : file.type === "image/png"
+          ? "png"
+          : "webp";
     const fileName = `${validation.data.type.toLowerCase()}-${Date.now()}-${crypto.randomUUID()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "progress", user.id);
+    const uploadDir = path.join(
+      process.cwd(),
+      "public",
+      "uploads",
+      "progress",
+      user.id,
+    );
     await fs.mkdir(uploadDir, { recursive: true });
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -94,12 +110,29 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const posthog = getPostHogServer();
+    const uploadedData = validation.data as {
+      type: string;
+      weekNumber?: number;
+      notes?: string;
+    };
+    posthog.capture({
+      distinctId: user.id,
+      event: "progress_photo_uploaded",
+      properties: {
+        photo_type: uploadedData.type,
+        week_number: uploadedData.weekNumber,
+        has_notes: !!uploadedData.notes,
+      },
+    });
+    await posthog.flush();
+
     return NextResponse.json({ success: true, entry });
   } catch (error) {
     log.error({ err: error }, "Failed to upload progress");
     return NextResponse.json(
       { error: "Failed to upload progress" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

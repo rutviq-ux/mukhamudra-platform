@@ -3,6 +3,7 @@ import { prisma } from "@ru/db";
 import { getServerEnv, createLogger } from "@ru/config";
 import { createRazorpayOrder } from "@/lib/razorpay";
 import { getCurrentUser } from "@/lib/auth";
+import { getPostHogServer } from "@/lib/posthog-server";
 
 const log = createLogger("api:razorpay:recording-addon");
 
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: "Sign in to continue" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
           error:
             "Recording access requires an active membership. Please make sure your subscription is current, or renew to continue.",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
           error: "You already have active recording access",
           expiresAt: existingAccess.expiresAt,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     if (!addonPlan || !addonPlan.isActive) {
       return NextResponse.json(
         { error: "Recording add-on is not available" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -110,6 +111,17 @@ export async function POST(request: NextRequest) {
 
     const env = getServerEnv();
 
+    const posthog = getPostHogServer();
+    posthog.capture({
+      distinctId: user.id,
+      event: "recording_addon_checkout_initiated",
+      properties: {
+        order_id: order.id,
+        amount_paise: addonPlan.amountPaise,
+      },
+    });
+    await posthog.flush();
+
     return NextResponse.json({
       orderId: razorpayOrder.id,
       amount: addonPlan.amountPaise,
@@ -126,7 +138,7 @@ export async function POST(request: NextRequest) {
     log.error({ err: error }, "Failed to create recording add-on order");
     return NextResponse.json(
       { error: "Failed to create order" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { Prisma, prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
+import { getPostHogServer } from "@/lib/posthog-server";
 
 const log = createLogger("webhook:clerk");
 
@@ -28,8 +29,13 @@ type ClerkUserEvent = {
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    log.warn("CLERK_WEBHOOK_SECRET not configured — skipping webhook processing");
-    return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+    log.warn(
+      "CLERK_WEBHOOK_SECRET not configured — skipping webhook processing",
+    );
+    return NextResponse.json(
+      { error: "Webhook not configured" },
+      { status: 500 },
+    );
   }
 
   // Verify the webhook signature
@@ -38,7 +44,10 @@ export async function POST(request: NextRequest) {
   const svixSignature = request.headers.get("svix-signature");
 
   if (!svixId || !svixTimestamp || !svixSignature) {
-    return NextResponse.json({ error: "Missing svix headers" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing svix headers" },
+      { status: 400 },
+    );
   }
 
   const body = await request.text();
@@ -85,10 +94,13 @@ export async function POST(request: NextRequest) {
 
   try {
     if (type === "user.created" || type === "user.updated") {
-      await handleUserSync(data);
+      await handleUserSync(data, type);
     } else if (type === "user.deleted") {
       // Soft-handle deletion: log but don't delete DB records (preserve order history etc.)
-      log.info({ clerkId: data.id }, "User deleted in Clerk — DB record preserved");
+      log.info(
+        { clerkId: data.id },
+        "User deleted in Clerk — DB record preserved",
+      );
     } else {
       log.info({ type }, "Unhandled Clerk event type");
     }
@@ -110,14 +122,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    log.error({ err: error, clerkId: data.id }, "Failed to process Clerk webhook");
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
+    log.error(
+      { err: error, clerkId: data.id },
+      "Failed to process Clerk webhook",
+    );
+    return NextResponse.json(
+      { error: "Webhook processing failed" },
+      { status: 500 },
+    );
   }
 }
 
-async function handleUserSync(data: ClerkUserEvent["data"]) {
+async function handleUserSync(data: ClerkUserEvent["data"], eventType: string) {
   const email = data.email_addresses[0]?.email_address || "";
-  const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ") || undefined;
+  const fullName =
+    [data.first_name, data.last_name].filter(Boolean).join(" ") || undefined;
   const phone = data.phone_numbers[0]?.phone_number || undefined;
 
   // Try to find existing user by clerkId
@@ -168,9 +187,14 @@ async function handleUserSync(data: ClerkUserEvent["data"]) {
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === "P2002"
         ) {
-          log.info({ clerkId: data.id }, "User already exists (race condition) — linking");
+          log.info(
+            { clerkId: data.id },
+            "User already exists (race condition) — linking",
+          );
           const existing = await prisma.user.findFirst({
-            where: { OR: [{ clerkId: data.id }, ...(email ? [{ email }] : [])] },
+            where: {
+              OR: [{ clerkId: data.id }, ...(email ? [{ email }] : [])],
+            },
           });
           if (existing && !existing.clerkId) {
             await prisma.user.update({
@@ -186,4 +210,29 @@ async function handleUserSync(data: ClerkUserEvent["data"]) {
   }
 
   log.info({ clerkId: data.id, email }, "User synced successfully");
+
+  const posthog = getPostHogServer();
+  if (eventType === "user.created") {
+    const dbUser = await prisma.user.findUnique({
+      where: { clerkId: data.id },
+    });
+    const distinctId = dbUser?.id ?? data.id;
+    posthog.identify({
+      distinctId,
+      properties: {
+        $set: {
+          email,
+          name: fullName || undefined,
+          clerk_id: data.id,
+        },
+        $set_once: { signed_up_at: new Date().toISOString() },
+      },
+    });
+    posthog.capture({
+      distinctId,
+      event: "user_signed_up",
+      properties: { email_domain: email.split("@")[1] },
+    });
+  }
+  await posthog.flush();
 }

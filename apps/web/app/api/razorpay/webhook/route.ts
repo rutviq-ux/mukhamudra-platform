@@ -28,6 +28,7 @@ import {
 } from "@ru/notifications";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { getSubscriptionPeriod } from "@/lib/memberships";
+import { getPostHogServer } from "@/lib/posthog-server";
 
 const log = createLogger("api:razorpay:webhook");
 
@@ -40,25 +41,19 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get("x-razorpay-signature");
 
     if (!signature) {
-      return NextResponse.json(
-        { error: "Missing signature" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing signature" }, { status: 400 });
     }
 
     // Verify webhook signature
     const isValid = verifyWebhookSignature(
       rawBody,
       signature,
-      env.RAZORPAY_WEBHOOK_SECRET
+      env.RAZORPAY_WEBHOOK_SECRET,
     );
 
     if (!isValid) {
       log.warn("Invalid webhook signature");
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     let parsedPayload: unknown;
@@ -67,7 +62,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON payload" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -75,7 +70,7 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json(
         { error: validation.error, errors: validation.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -154,7 +149,7 @@ export async function POST(request: NextRequest) {
     log.error({ err: error }, "Webhook processing failed");
     return NextResponse.json(
       { error: "Webhook processing failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -223,7 +218,9 @@ async function handlePaymentCaptured(payload: any) {
     // ─── One-time subscription plan: activate membership ───
     const periodEnd = new Date();
     periodEnd.setDate(
-      periodEnd.getDate() + (order.plan.durationDays ?? (order.plan.interval === "ANNUAL" ? 365 : 30))
+      periodEnd.getDate() +
+        (order.plan.durationDays ??
+          (order.plan.interval === "ANNUAL" ? 365 : 30)),
     );
 
     await tx.membership.upsert({
@@ -255,19 +252,31 @@ async function handlePaymentCaptured(payload: any) {
   if (result.status === "recording_addon") {
     log.info(
       { orderId: result.orderId },
-      "Recording add-on purchased, access granted"
+      "Recording add-on purchased, access granted",
     );
     notifyRecordingAddonPurchased({
       userId: result.userId,
       expiresAt: result.expiresAt,
     }).catch((err) =>
-      log.error({ err }, "Failed to queue recording addon notification")
+      log.error({ err }, "Failed to queue recording addon notification"),
     );
     sendEnrollRecordingsAddon({ userId: result.userId }).catch((err) =>
-      log.error({ err }, "Failed to send recordings addon WhatsApp")
+      log.error({ err }, "Failed to send recordings addon WhatsApp"),
     );
   } else if (result.status === "updated") {
     log.info({ orderId: result.orderId }, "Order paid, membership activated");
+
+    const posthog = getPostHogServer();
+    posthog.capture({
+      distinctId: result.userId,
+      event: "payment_captured",
+      properties: {
+        order_id: result.orderId,
+        plan_id: result.planId,
+        razorpay_payment_id: payment.id,
+      },
+    });
+    await posthog.flush();
 
     const order = await prisma.order.findUnique({
       where: { razorpayOrderId: orderId },
@@ -280,7 +289,7 @@ async function handlePaymentCaptured(payload: any) {
         planName: order.plan.name,
         amount: (order.amountPaise / 100).toLocaleString("en-IN"),
       }).catch((err) =>
-        log.error({ err }, "Failed to queue payment confirmation notification")
+        log.error({ err }, "Failed to queue payment confirmation notification"),
       );
 
       notifyMembershipActivatedEmail({
@@ -292,7 +301,7 @@ async function handlePaymentCaptured(payload: any) {
           year: "numeric",
         }),
       }).catch((err) =>
-        log.error({ err }, "Failed to queue membership activated email")
+        log.error({ err }, "Failed to queue membership activated email"),
       );
 
       // Queue WhatsApp group adds
@@ -317,7 +326,10 @@ async function handlePaymentCaptured(payload: any) {
 
         for (const batch of batches) {
           queueWhatsAppGroupAdd(user.phone, batch.slug).catch((err) =>
-            log.error({ err, batchSlug: batch.slug }, "Failed to queue WhatsApp group add")
+            log.error(
+              { err, batchSlug: batch.slug },
+              "Failed to queue WhatsApp group add",
+            ),
           );
         }
       }
@@ -325,14 +337,17 @@ async function handlePaymentCaptured(payload: any) {
       emitSequenceEvent("subscription.activated", {
         userId: order.userId,
       }).catch((err) =>
-        log.error({ err }, "Failed to emit subscription.activated sequence event")
+        log.error(
+          { err },
+          "Failed to emit subscription.activated sequence event",
+        ),
       );
 
       // Send the just-queued confirmation/activation emails immediately
       // instead of waiting for the 5-minute send-emails cron. The cron stays
       // as the fallback for anything this flush can't deliver right away.
       flushQueuedEmailsForUser(order.userId).catch((err) =>
-        log.error({ err }, "Failed to flush confirmation emails")
+        log.error({ err }, "Failed to flush confirmation emails"),
       );
 
       // ─── Send enrollment WhatsApp template based on plan ───
@@ -341,28 +356,38 @@ async function handlePaymentCaptured(payload: any) {
       const pEnd = result.periodEnd;
 
       if (slug === "face-annual") {
-        sendEnrollFaceYogaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-          log.error({ err }, "Failed to send Face Yoga Annual enrollment WA")
+        sendEnrollFaceYogaAnnual({ userId: uid, periodEnd: pEnd }).catch(
+          (err) =>
+            log.error({ err }, "Failed to send Face Yoga Annual enrollment WA"),
         );
       } else if (slug === "pranayama-annual") {
-        sendEnrollPranayamaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-          log.error({ err }, "Failed to send Pranayama Annual enrollment WA")
+        sendEnrollPranayamaAnnual({ userId: uid, periodEnd: pEnd }).catch(
+          (err) =>
+            log.error({ err }, "Failed to send Pranayama Annual enrollment WA"),
         );
       } else if (slug === "bundle-annual") {
         sendEnrollBundleAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-          log.error({ err }, "Failed to send Bundle Annual enrollment WA")
+          log.error({ err }, "Failed to send Bundle Annual enrollment WA"),
         );
       } else if (slug === "bundle-monthly") {
         sendEnrollBundleMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-          log.error({ err }, "Failed to send Bundle Monthly enrollment WA")
+          log.error({ err }, "Failed to send Bundle Monthly enrollment WA"),
         );
       } else if (slug === "face-monthly") {
-        sendEnrollFaceYogaMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-          log.error({ err }, "Failed to send Face Yoga Monthly enrollment WA")
+        sendEnrollFaceYogaMonthly({ userId: uid, periodEnd: pEnd }).catch(
+          (err) =>
+            log.error(
+              { err },
+              "Failed to send Face Yoga Monthly enrollment WA",
+            ),
         );
       } else if (slug === "pranayama-monthly") {
-        sendEnrollPranayamaMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-          log.error({ err }, "Failed to send Pranayama Monthly enrollment WA")
+        sendEnrollPranayamaMonthly({ userId: uid, periodEnd: pEnd }).catch(
+          (err) =>
+            log.error(
+              { err },
+              "Failed to send Pranayama Monthly enrollment WA",
+            ),
         );
       }
     }
@@ -405,6 +430,20 @@ async function handleSubscriptionActivated(payload: any) {
 
   log.info({ subscriptionId }, "Membership activated");
 
+  const posthog = getPostHogServer();
+  posthog.capture({
+    distinctId: membership.userId,
+    event: "subscription_activated",
+    properties: {
+      subscription_id: subscriptionId,
+      plan_name: membership.plan.name,
+      plan_slug: membership.plan.slug,
+      interval: membership.plan.interval,
+      period_end: currentPeriodEnd?.toISOString(),
+    },
+  });
+  await posthog.flush();
+
   // Send notification
   const isBundle = membership.plan.product.type === "BUNDLE";
 
@@ -413,7 +452,7 @@ async function handleSubscriptionActivated(payload: any) {
       userId: membership.userId,
       periodEnd: currentPeriodEnd,
     }).catch((err) =>
-      log.error({ err }, "Failed to queue bundle welcome notification")
+      log.error({ err }, "Failed to queue bundle welcome notification"),
     );
   } else {
     notifySubscriptionActivated({
@@ -427,10 +466,7 @@ async function handleSubscriptionActivated(payload: any) {
           })
         : "Ongoing",
     }).catch((err) =>
-      log.error(
-        { err },
-        "Failed to queue subscription activated notification"
-      )
+      log.error({ err }, "Failed to queue subscription activated notification"),
     );
   }
 
@@ -458,8 +494,8 @@ async function handleSubscriptionActivated(payload: any) {
       queueWhatsAppGroupAdd(user.phone, batch.slug).catch((err) =>
         log.error(
           { err, batchSlug: batch.slug },
-          "Failed to queue WhatsApp group add"
-        )
+          "Failed to queue WhatsApp group add",
+        ),
       );
     }
   }
@@ -468,7 +504,7 @@ async function handleSubscriptionActivated(payload: any) {
   emitSequenceEvent("subscription.activated", {
     userId: membership.userId,
   }).catch((err) =>
-    log.error({ err }, "Failed to emit subscription.activated sequence event")
+    log.error({ err }, "Failed to emit subscription.activated sequence event"),
   );
 
   // Send membership activation email
@@ -483,7 +519,7 @@ async function handleSubscriptionActivated(payload: any) {
         })
       : "Ongoing",
   }).catch((err) =>
-    log.error({ err }, "Failed to queue membership activated email")
+    log.error({ err }, "Failed to queue membership activated email"),
   );
 
   // ─── Send enrollment WhatsApp template ───
@@ -494,27 +530,28 @@ async function handleSubscriptionActivated(payload: any) {
 
     if (slug === "face-annual") {
       sendEnrollFaceYogaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Face Yoga Annual enrollment WA")
+        log.error({ err }, "Failed to send Face Yoga Annual enrollment WA"),
       );
     } else if (slug === "pranayama-annual") {
       sendEnrollPranayamaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Pranayama Annual enrollment WA")
+        log.error({ err }, "Failed to send Pranayama Annual enrollment WA"),
       );
     } else if (slug === "bundle-annual") {
       sendEnrollBundleAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Bundle Annual enrollment WA")
+        log.error({ err }, "Failed to send Bundle Annual enrollment WA"),
       );
     } else if (slug === "bundle-monthly") {
       sendEnrollBundleMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Bundle Monthly enrollment WA")
+        log.error({ err }, "Failed to send Bundle Monthly enrollment WA"),
       );
     } else if (slug === "face-monthly") {
       sendEnrollFaceYogaMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Face Yoga Monthly enrollment WA")
+        log.error({ err }, "Failed to send Face Yoga Monthly enrollment WA"),
       );
     } else if (slug === "pranayama-monthly") {
-      sendEnrollPranayamaMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Pranayama Monthly enrollment WA")
+      sendEnrollPranayamaMonthly({ userId: uid, periodEnd: pEnd }).catch(
+        (err) =>
+          log.error({ err }, "Failed to send Pranayama Monthly enrollment WA"),
       );
     }
   }
@@ -545,8 +582,22 @@ async function handleSubscriptionCharged(payload: any) {
 
   log.info(
     { subscriptionId, periodEnd: currentPeriodEnd },
-    "Membership renewed"
+    "Membership renewed",
   );
+
+  const posthog = getPostHogServer();
+  posthog.capture({
+    distinctId: membership.userId,
+    event: "subscription_renewed",
+    properties: {
+      subscription_id: subscriptionId,
+      plan_name: membership.plan.name,
+      plan_slug: membership.plan.slug,
+      interval: membership.plan.interval,
+      new_period_end: currentPeriodEnd?.toISOString(),
+    },
+  });
+  await posthog.flush();
 }
 
 async function handleSubscriptionCancelled(payload: any) {
@@ -569,6 +620,19 @@ async function handleSubscriptionCancelled(payload: any) {
   });
 
   log.info({ subscriptionId }, "Membership cancelled");
+
+  const posthogCancel = getPostHogServer();
+  posthogCancel.capture({
+    distinctId: membership.userId,
+    event: "subscription_cancelled",
+    properties: {
+      subscription_id: subscriptionId,
+      plan_name: membership.plan.name,
+      plan_slug: membership.plan.slug,
+      interval: membership.plan.interval,
+    },
+  });
+  await posthogCancel.flush();
 
   // Queue WhatsApp group removals for all batches the product covered
   const user = await prisma.user.findUnique({
@@ -594,8 +658,8 @@ async function handleSubscriptionCancelled(payload: any) {
       queueWhatsAppGroupRemove(user.phone, batch.slug).catch((err) =>
         log.error(
           { err, batchSlug: batch.slug },
-          "Failed to queue WhatsApp group remove"
-        )
+          "Failed to queue WhatsApp group remove",
+        ),
       );
     }
   }
@@ -604,7 +668,7 @@ async function handleSubscriptionCancelled(payload: any) {
   emitSequenceEvent("subscription.cancelled", {
     userId: membership.userId,
   }).catch((err) =>
-    log.error({ err }, "Failed to emit subscription.cancelled sequence event")
+    log.error({ err }, "Failed to emit subscription.cancelled sequence event"),
   );
 
   // Send membership cancellation email
@@ -619,7 +683,7 @@ async function handleSubscriptionCancelled(payload: any) {
         })
       : "N/A",
   }).catch((err) =>
-    log.error({ err }, "Failed to queue membership cancelled email")
+    log.error({ err }, "Failed to queue membership cancelled email"),
   );
 }
 
@@ -645,12 +709,33 @@ async function handlePaymentFailed(payload: any) {
         orderId: order.id,
         planName: order.plan.name,
         amount: (order.amountPaise / 100).toLocaleString("en-IN"),
-        reason: payment.error_description || payment.error_reason || "Payment failed",
+        reason:
+          payment.error_description || payment.error_reason || "Payment failed",
       }).catch((err) =>
-        log.error({ err }, "Failed to queue payment failed notification")
+        log.error({ err }, "Failed to queue payment failed notification"),
       );
     }
   }
 
   log.warn({ orderId }, "Payment failed");
+
+  if (orderId) {
+    const failedOrder = await prisma.order.findFirst({
+      where: { razorpayOrderId: orderId },
+    });
+    if (failedOrder) {
+      const posthog = getPostHogServer();
+      posthog.capture({
+        distinctId: failedOrder.userId,
+        event: "payment_failed",
+        properties: {
+          order_id: failedOrder.id,
+          razorpay_order_id: orderId,
+          error_reason: payment.error_reason || undefined,
+          error_description: payment.error_description || undefined,
+        },
+      });
+      await posthog.flush();
+    }
+  }
 }
