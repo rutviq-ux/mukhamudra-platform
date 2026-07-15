@@ -2,9 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@ru/db";
-import { createBookingSchema, cancelBookingSchema, createLogger } from "@ru/config";
+import {
+  createBookingSchema,
+  cancelBookingSchema,
+  createLogger,
+} from "@ru/config";
 import { createAuthAction } from "@/lib/actions/safe-action";
 import { notifyBookingConfirmed } from "@ru/notifications";
+import { getPostHogServer } from "@/lib/posthog-server";
 import { getGoogleConfig } from "@/lib/google-config";
 import { addAttendee, removeAttendee } from "@ru/google-workspace";
 
@@ -91,7 +96,9 @@ export const createBooking = createAuthAction("createBooking", {
         hour: "2-digit",
         minute: "2-digit",
       }),
-    }).catch((err) => log.error({ err }, "Failed to queue booking notification"));
+    }).catch((err) =>
+      log.error({ err }, "Failed to queue booking notification"),
+    );
 
     // Fire-and-forget: sync attendee to Calendar event
     if (session.calendarEventId) {
@@ -102,6 +109,19 @@ export const createBooking = createAuthAction("createBooking", {
         );
       }
     }
+
+    const posthog = getPostHogServer();
+    posthog.capture({
+      distinctId: user.id,
+      event: "session_booking_created",
+      properties: {
+        session_id: sessionId,
+        booking_id: booking.id,
+        product_type: session.product.name,
+        session_starts_at: session.startsAt.toISOString(),
+      },
+    });
+    await posthog.flush();
 
     revalidatePath("/app/sessions");
 
@@ -151,6 +171,19 @@ export const cancelBooking = createAuthAction("cancelBooking", {
         );
       }
     }
+
+    const posthogCancel = getPostHogServer();
+    posthogCancel.capture({
+      distinctId: user.id,
+      event: "session_booking_cancelled",
+      properties: {
+        booking_id: bookingId,
+        session_id: booking.sessionId,
+        product_type: booking.session.product.name,
+        session_starts_at: booking.session.startsAt.toISOString(),
+      },
+    });
+    await posthogCancel.flush();
 
     revalidatePath("/app/sessions");
 

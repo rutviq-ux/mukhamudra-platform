@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@ru/db";
 import { clerkClient } from "@clerk/nextjs/server";
+import { getPostHogServer } from "@/lib/posthog-server";
 
 export async function DELETE() {
   const { userId: clerkId } = await auth();
@@ -21,6 +22,10 @@ export async function DELETE() {
   } catch {
     // May already be deleted from Clerk — continue
   }
+
+  const posthog = getPostHogServer();
+  posthog.capture({ distinctId: user.id, event: "account_deleted" });
+  await posthog.flush();
 
   // Delete all user data in a transaction
   await prisma.$transaction(async (tx) => {

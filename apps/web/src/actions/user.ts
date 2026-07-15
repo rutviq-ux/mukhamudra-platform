@@ -5,6 +5,7 @@ import { Prisma, prisma } from "@ru/db";
 import { userUpdateSchema, createLogger } from "@ru/config";
 import { notifyWelcome, emitSequenceEvent } from "@ru/notifications";
 import { createAuthAction } from "@/lib/actions/safe-action";
+import { getPostHogServer } from "@/lib/posthog-server";
 
 const log = createLogger("action:updateUserProfile");
 
@@ -72,6 +73,28 @@ export const updateUserProfile = createAuthAction("updateUserProfile", {
       emitSequenceEvent("user.onboarded", { userId: user.id }).catch((err) =>
         log.error({ err }, "Failed to emit user.onboarded sequence event"),
       );
+
+      const posthog = getPostHogServer();
+      posthog.identify({
+        distinctId: user.id,
+        properties: {
+          $set: {
+            goal: goal,
+            whatsapp_opt_in: effectiveWhatsappOptIn ?? false,
+            marketing_opt_in: marketingOptIn ?? false,
+            timezone: timezone,
+          },
+        },
+      });
+      posthog.capture({
+        distinctId: user.id,
+        event: "user_onboarding_completed",
+        properties: {
+          goal: goal,
+          whatsapp_opt_in: effectiveWhatsappOptIn ?? false,
+        },
+      });
+      await posthog.flush();
     }
 
     revalidatePath("/app");

@@ -6,6 +6,7 @@ import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { createAuthAction } from "@/lib/actions/safe-action";
 import { getRazorpay } from "@/lib/razorpay";
+import { getPostHogServer } from "@/lib/posthog-server";
 
 const log = createLogger("action:memberships");
 
@@ -58,6 +59,19 @@ export const cancelSubscription = createAuthAction("cancelSubscription", {
         cancelledAt: new Date(),
       },
     });
+
+    const posthog = getPostHogServer();
+    posthog.capture({
+      distinctId: user.id,
+      event: "subscription_cancellation_requested",
+      properties: {
+        membership_id: membershipId,
+        plan_name: membership.plan.name,
+        plan_slug: membership.plan.slug,
+        had_razorpay_subscription: !!membership.razorpaySubscriptionId,
+      },
+    });
+    await posthog.flush();
 
     revalidatePath("/app/billing");
 
