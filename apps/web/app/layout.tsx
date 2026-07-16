@@ -12,6 +12,7 @@ import { Toaster } from "@/components/toaster";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { SmoothScrollProvider } from "@/components/smooth-scroll-provider";
 import { clerkAppearance } from "@/lib/clerk-appearance";
+import posthog from 'posthog-js';
 
 const themeInitScript = `(function(){try{var t=localStorage.getItem("mm-theme");if(t==="light")document.documentElement.classList.add("light")}catch(e){}})()`;
 
