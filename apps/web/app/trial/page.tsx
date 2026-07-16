@@ -1,23 +1,21 @@
 import Link from "next/link";
 
-const YOUTUBE_VIDEO_ID = "aEG2lSN3lHM";
-
 export default function TrialPage() {
   return (
     <main className="bg-background">
       <section className="relative">
         <div className="relative w-full max-w-5xl mx-auto mt-24 sm:mt-28 px-4 sm:px-8">
           <div className="relative aspect-video rounded-xl overflow-hidden bg-black/40">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_VIDEO_ID}?rel=0&modestbranding=1&playsinline=1`}
-              title="Mukha Mudra trial session"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-              loading="lazy"
-              className="w-full h-full"
-              style={{ border: "none" }}
-            />
+            <video
+              controls
+              playsInline
+              preload="metadata"
+              poster="/hero_videos/poster.png"
+              className="w-full h-full object-cover"
+            >
+              <source src="/hero_videos/trial_session.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
           </div>
         </div>
 
