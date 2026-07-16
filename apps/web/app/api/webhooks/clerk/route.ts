@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { Prisma, prisma } from "@ru/db";
-import { createLogger } from "@ru/config";
+import { createLogger, getServerEnv } from "@ru/config";
 import { getPostHogServer } from "@/lib/posthog-server";
+import {
+  ResendEmailProvider,
+  ListmonkEmailProvider,
+  ConsoleEmailProvider,
+  type EmailProvider,
+} from "@ru/notifications";
 
 const log = createLogger("webhook:clerk");
 
@@ -25,6 +31,38 @@ type ClerkUserEvent = {
   };
   type: string;
 };
+
+// Shape of the emails.created event data, per Clerk's docs. Clerk
+// pre-renders the full HTML body server-side, so we just relay it -- we
+// don't need to know the template slug or reconstruct the OTP ourselves.
+type ClerkEmailEvent = {
+  data: {
+    to_email_address: string;
+    subject: string;
+    body: string; // pre-rendered HTML
+    body_plain?: string;
+    from_email_name?: string; // local part, e.g. "notifications"
+  };
+  type: string;
+};
+
+function resolveEmailProvider(): EmailProvider {
+  const env = getServerEnv();
+  if (env.RESEND_API_KEY) {
+    return new ResendEmailProvider({
+      apiKey: env.RESEND_API_KEY,
+      defaultFrom: env.RESEND_FROM_EMAIL,
+    });
+  }
+  if (env.LISTMONK_URL && env.LISTMONK_API_USER && env.LISTMONK_API_PASSWORD) {
+    return new ListmonkEmailProvider({
+      url: env.LISTMONK_URL,
+      username: env.LISTMONK_API_USER,
+      password: env.LISTMONK_API_PASSWORD,
+    });
+  }
+  return new ConsoleEmailProvider();
+}
 
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
@@ -65,7 +103,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const { type, data } = event;
+  const { type } = event;
+
+  // emails.created has a completely different payload shape (no user id) --
+  // handle it before we assume event.data.id exists.
+  if (type === "email.created" || type === "emails.created") {
+    return handleEmailCreated(event as unknown as ClerkEmailEvent, svixId);
+  }
+
+  const { data } = event;
   log.info({ type, clerkId: data.id }, "Clerk webhook received");
 
   // Use svix-id for idempotency
@@ -235,4 +281,85 @@ async function handleUserSync(data: ClerkUserEvent["data"], eventType: string) {
     });
   }
   await posthog.flush();
+}
+
+/**
+ * Handle the emails.created webhook — fired when "Delivered by Clerk" is
+ * turned OFF for a template. Clerk pre-renders the full email (subject +
+ * HTML body, OTP/link already filled in) and hands it to us; we just relay
+ * it through our own provider (Resend) instead of Clerk's SendGrid
+ * integration. This exists because Clerk's SendGrid-routed emails were
+ * landing in spam for some providers (GMX, Hotmail) even when sent from
+ * our verified domain — routing through Resend, which we already use
+ * reliably for transactional email, avoids that shared-pool reputation
+ * issue.
+ *
+ * Idempotency and audit follow the same pattern as user.* events above,
+ * keyed on the svix-id header.
+ */
+async function handleEmailCreated(
+  event: ClerkEmailEvent,
+  svixId: string,
+): Promise<NextResponse> {
+  const { data } = event;
+  const to = data.to_email_address;
+
+  log.info({ to, subject: data.subject }, "Clerk emails.created received");
+
+  const existingEvent = await prisma.webhookEvent.findUnique({
+    where: { eventId: svixId },
+  });
+  if (existingEvent) {
+    log.info({ eventId: svixId }, "Clerk email event already processed");
+    return NextResponse.json({ status: "already_processed" });
+  }
+
+  const webhookEvent = await prisma.webhookEvent.create({
+    data: {
+      provider: "clerk",
+      eventType: "email.created",
+      eventId: svixId,
+      payload: { to, subject: data.subject },
+      status: "PENDING",
+    },
+  });
+
+  try {
+    if (!to) {
+      throw new Error("emails.created event missing to_email_address");
+    }
+
+    const provider = resolveEmailProvider();
+    const result = await provider.send({
+      to,
+      subject: data.subject,
+      html: data.body,
+      text: data.body_plain,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || "Email provider send failed");
+    }
+
+    await prisma.webhookEvent.update({
+      where: { id: webhookEvent.id },
+      data: { status: "PROCESSED", processedAt: new Date() },
+    });
+
+    log.info({ to, messageId: result.messageId }, "Clerk auth email relayed via Resend");
+    return NextResponse.json({ status: "processed" });
+  } catch (error) {
+    await prisma.webhookEvent.update({
+      where: { id: webhookEvent.id },
+      data: {
+        status: "FAILED",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+    });
+    log.error({ err: error, to }, "Failed to relay Clerk auth email");
+    return NextResponse.json(
+      { error: "Failed to send auth email" },
+      { status: 500 },
+    );
+  }
 }
