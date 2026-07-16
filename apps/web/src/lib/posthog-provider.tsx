@@ -53,8 +53,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
     if (key && host && !key.includes("your_key")) {
-      posthog.init('phc_njkiGeM6kcbahYvdmMnoiESgfQdrinYCSc8Lae8bfjPL', {
-        api_host: 'https://us.i.posthog.com',
+      posthog.init(key, {
+        api_host: host,
         person_profiles: "identified_only",
         capture_pageview: false, // We capture manually
         capture_pageleave: true,
