@@ -4,8 +4,8 @@ let _posthog: PostHog | null = null;
 
 export function getPostHogServer(): PostHog {
   if (!_posthog) {
-    _posthog = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY || "", {
-      host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+    _posthog = new PostHog(process.env.local || "", {
+      host: process.env.local || "https://us.i.posthog.com",
       flushAt: 1,
       flushInterval: 0,
       enableExceptionAutocapture: true,
