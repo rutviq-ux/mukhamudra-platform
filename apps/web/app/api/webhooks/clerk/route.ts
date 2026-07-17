@@ -269,6 +269,7 @@ async function handleUserSync(data: ClerkUserEvent["data"], eventType: string) {
         $set: {
           email,
           name: fullName || undefined,
+          phone: phone || undefined,
           clerk_id: data.id,
         },
         $set_once: { signed_up_at: new Date().toISOString() },
