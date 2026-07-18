@@ -213,6 +213,8 @@ model Batch {
   capacity      Int       @default(50)
   modalities    String[]  // Flat superset of all techniques (auto-computed)
   dayModalities Json?     // Per-day modalities: { "1": ["Gua Sha"], "3": ["Cupping"] }
+  meetingLink   String?   // Permanent Google Meet link for this batch's time slot
+  meetingId     String?   // Meet conference ID portion of meetingLink (abc-defg-hij)
   endsAt        DateTime? // NULL = runs indefinitely
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())

@@ -14,6 +14,8 @@ export interface BatchConfig {
   capacity: number;
   modalities: string[];
   dayModalities: unknown; // JSON – Record<string, string[]> | null
+  meetingLink: string | null;
+  meetingId: string | null;
   endsAt: Date | null;
 }
 
@@ -28,6 +30,8 @@ export interface SessionToCreate {
   endsAt: Date;
   capacity: number;
   coachId?: string | null;
+  joinUrl?: string | null;
+  meetingId?: string | null;
 }
 
 /**
@@ -99,6 +103,8 @@ export function buildSessionsForBatch(
       endsAt: endsAtUtc,
       capacity: batch.capacity,
       ...(coachId ? { coachId } : {}),
+      ...(batch.meetingLink ? { joinUrl: batch.meetingLink } : {}),
+      ...(batch.meetingId ? { meetingId: batch.meetingId } : {}),
     });
   }
 
