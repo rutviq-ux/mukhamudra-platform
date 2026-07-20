@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateUserProfile } from "@/actions/user";
+import { COUNTRY_CODES, parsePhone } from "@/data/country-codes";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
@@ -71,30 +72,6 @@ const TERMS_SUMMARY = [
       "Consult a healthcare professional before participating if you have medical conditions. You participate at your own risk.",
   },
 ];
-
-const COUNTRY_CODES = [
-  { code: "+91", label: "IN +91", flag: "🇮🇳" },
-  { code: "+1", label: "US +1", flag: "🇺🇸" },
-  { code: "+44", label: "UK +44", flag: "🇬🇧" },
-  { code: "+971", label: "AE +971", flag: "🇦🇪" },
-  { code: "+65", label: "SG +65", flag: "🇸🇬" },
-  { code: "+61", label: "AU +61", flag: "🇦🇺" },
-  { code: "+49", label: "DE +49", flag: "🇩🇪" },
-];
-
-/** Split a stored phone like "+919876543210" into { countryCode, localNumber } */
-function parsePhone(phone: string): { countryCode: string; localNumber: string } {
-  if (!phone) return { countryCode: "+91", localNumber: "" };
-  // Try matching known country codes (longest first)
-  const sorted = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
-  for (const cc of sorted) {
-    if (phone.startsWith(cc.code)) {
-      return { countryCode: cc.code, localNumber: phone.slice(cc.code.length) };
-    }
-  }
-  // Fallback: strip leading + and assume first digits are code
-  return { countryCode: "+91", localNumber: phone.replace(/^\+/, "") };
-}
 
 export function OnboardingForm({
   initialName,

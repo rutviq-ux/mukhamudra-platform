@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition, type FormEvent, useRef } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { submitLead } from "@/actions/leads";
+import { COUNTRY_CODES } from "@/data/country-codes";
 
 const DELAY_MS = 15_000;
 const SCROLL_THRESHOLD = 0.35;
@@ -236,30 +237,11 @@ export function LeadPopup() {
                   className="text-sm bg-transparent outline-none cursor-pointer"
                   style={{ color: "#5C5347", border: "none" }}
                 >
-                  <option value="+91">🇮🇳 +91</option>
-                  <option value="+1">🇺🇸 +1</option>
-                  <option value="+44">🇬🇧 +44</option>
-                  <option value="+61">🇦🇺 +61</option>
-                  <option value="+49">🇩🇪 +49</option>
-                  <option value="+971">🇦🇪 +971</option>
-                  <option value="+65">🇸🇬 +65</option>
-                  <option value="+60">🇲🇾 +60</option>
-                  <option value="+64">🇳🇿 +64</option>
-                  <option value="+353">🇮🇪 +353</option>
-                  <option value="+41">🇨🇭 +41</option>
-                  <option value="+33">🇫🇷 +33</option>
-                  <option value="+34">🇪🇸 +34</option>
-                  <option value="+39">🇮🇹 +39</option>
-                  <option value="+31">🇳🇱 +31</option>
-                  <option value="+966">🇸🇦 +966</option>
-                  <option value="+974">🇶🇦 +974</option>
-                  <option value="+254">🇰🇪 +254</option>
-                  <option value="+27">🇿🇦 +27</option>
-                  <option value="+55">🇧🇷 +55</option>
-                  <option value="+52">🇲🇽 +52</option>
-                  <option value="+380">🇺🇦 +380</option>
-                  <option value="+48">🇵🇱 +48</option>
-                  <option value="+7">🇷🇺 +7</option>
+                  {COUNTRY_CODES.map((cc) => (
+                    <option key={cc.code} value={cc.code}>
+                      {cc.flag} {cc.code}
+                    </option>
+                  ))}
                 </select>
               </div>
               <input
