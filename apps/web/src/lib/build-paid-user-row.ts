@@ -33,8 +33,6 @@ export function formatProductLabel(type: ProductType): string {
       return "pranayama";
     case "BUNDLE":
       return "bundle";
-    default:
-      return type.toLowerCase();
   }
 }
 
