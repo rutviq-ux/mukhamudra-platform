@@ -81,6 +81,11 @@ const SCHEDULES = [
     cron: "*/5 * * * *", // Every 5 minutes
     comment: "Auto-complete sessions: status transitions, Meet attendance, booking updates",
   },
+  {
+    path: "/api/cron/sync-paid-users-sheet",
+    cron: "0 3 * * *", // Daily 03:00 UTC
+    comment: "Bootstrap/reconcile Paid Users Google Sheet tab for Interakt",
+  },
 ];
 
 async function listExistingSchedules(): Promise<

@@ -6,6 +6,7 @@ import { userUpdateSchema, createLogger } from "@ru/config";
 import { notifyWelcome, emitSequenceEvent } from "@ru/notifications";
 import { createAuthAction } from "@/lib/actions/safe-action";
 import { getPostHogServer } from "@/lib/posthog-server";
+import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
 
 const log = createLogger("action:updateUserProfile");
 
@@ -98,6 +99,12 @@ export const updateUserProfile = createAuthAction("updateUserProfile", {
     }
 
     revalidatePath("/app");
+
+    if (phone !== undefined && updatedUser.phone) {
+      syncPaidUserToSheet(updatedUser.id).catch((err) =>
+        log.error({ err, userId: updatedUser.id }, "Failed to sync paid-user sheet"),
+      );
+    }
 
     return { user: updatedUser };
   },

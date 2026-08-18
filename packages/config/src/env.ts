@@ -45,6 +45,8 @@ const serverEnvSchema = z.object({
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().email().optional(),
   GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: z.string().min(1).optional(),
   GOOGLE_IMPERSONATE_EMAIL: z.string().email().optional(),
+  GOOGLE_PAID_USERS_SHEET_ID: z.string().min(1).optional(),
+  GOOGLE_PAID_USERS_TAB: z.string().min(1).optional().default("Paid Users"),
 
   // Instagram (Meta Graph API — optional)
   INSTAGRAM_ACCESS_TOKEN: z.string().min(1).optional(),

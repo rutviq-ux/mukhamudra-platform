@@ -29,6 +29,7 @@ import {
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { getSubscriptionPeriod } from "@/lib/memberships";
 import { getPostHogServer } from "@/lib/posthog-server";
+import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
 
 const log = createLogger("api:razorpay:webhook");
 
@@ -390,6 +391,10 @@ async function handlePaymentCaptured(payload: any) {
             ),
         );
       }
+
+      syncPaidUserToSheet(order.userId).catch((err) =>
+        log.error({ err, userId: order.userId }, "Failed to sync paid-user sheet"),
+      );
     }
   }
 }
@@ -555,6 +560,13 @@ async function handleSubscriptionActivated(payload: any) {
       );
     }
   }
+
+  syncPaidUserToSheet(membership.userId).catch((err) =>
+    log.error(
+      { err, userId: membership.userId },
+      "Failed to sync paid-user sheet",
+    ),
+  );
 }
 
 async function handleSubscriptionCharged(payload: any) {
@@ -598,6 +610,13 @@ async function handleSubscriptionCharged(payload: any) {
     },
   });
   await posthog.flush();
+
+  syncPaidUserToSheet(membership.userId).catch((err) =>
+    log.error(
+      { err, userId: membership.userId },
+      "Failed to sync paid-user sheet",
+    ),
+  );
 }
 
 async function handleSubscriptionCancelled(payload: any) {
@@ -684,6 +703,13 @@ async function handleSubscriptionCancelled(payload: any) {
       : "N/A",
   }).catch((err) =>
     log.error({ err }, "Failed to queue membership cancelled email"),
+  );
+
+  syncPaidUserToSheet(membership.userId).catch((err) =>
+    log.error(
+      { err, userId: membership.userId },
+      "Failed to sync paid-user sheet",
+    ),
   );
 }
 

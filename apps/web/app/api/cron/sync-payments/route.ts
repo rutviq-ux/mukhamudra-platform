@@ -11,6 +11,7 @@ import {
   notifyRecordingAddonPurchased,
   queueWhatsAppGroupAdd,
 } from "@ru/notifications";
+import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
 
 const log = createLogger("cron:sync-payments");
 
@@ -125,6 +126,13 @@ async function handler(request: NextRequest) {
               );
             }
           }
+
+          syncPaidUserToSheet(membership.userId).catch((err) =>
+            log.error(
+              { err, userId: membership.userId },
+              "Sync: failed to sync paid-user sheet",
+            ),
+          );
         } else if (
           sub.status === "cancelled" ||
           sub.status === "expired"
@@ -142,6 +150,13 @@ async function handler(request: NextRequest) {
             "Membership cancelled via sync",
           );
           results.memberships.synced++;
+
+          syncPaidUserToSheet(membership.userId).catch((err) =>
+            log.error(
+              { err, userId: membership.userId },
+              "Sync: failed to sync paid-user sheet after cancel",
+            ),
+          );
         } else {
           // Still pending/created at Razorpay — skip for now
           results.memberships.skipped++;
