@@ -28,6 +28,7 @@ export default defineConfig({
       "@ru/ghost-client": path.resolve(__dirname, "packages/ghost-client/src"),
       "@ru/listmonk-client": path.resolve(__dirname, "packages/listmonk-client/src"),
       "@ru/notifications": path.resolve(__dirname, "packages/notifications/src"),
+      "@ru/google-workspace": path.resolve(__dirname, "packages/google-workspace/src"),
     },
   },
 });

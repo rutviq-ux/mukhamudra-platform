@@ -6,6 +6,7 @@ import { prisma } from "@ru/db";
 import { adminCreateUserSchema, adminUpdateUserSchema } from "@ru/config";
 import { createAdminAction } from "@/lib/actions/safe-action";
 import { clerkClient } from "@clerk/nextjs/server";
+import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
 
 /* ─── Create User ─── */
 export const createUser = createAdminAction("createUser", {
@@ -161,6 +162,12 @@ export const updateUser = createAdminAction("updateUser", {
     }
 
     await prisma.user.update({ where: { id }, data: dbUpdates });
+
+    if (phone !== undefined && phone?.trim()) {
+      syncPaidUserToSheet(id).catch(() => {
+        // Non-blocking — admin update should still succeed
+      });
+    }
 
     revalidatePath("/admin/users");
     revalidatePath(`/admin/users/${id}`);
