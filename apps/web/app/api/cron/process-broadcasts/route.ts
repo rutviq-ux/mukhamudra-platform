@@ -3,6 +3,7 @@ import { Prisma, prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { queueNotification, logMessage } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
+import { leadPhoneKey } from "@/lib/leads";
 
 const log = createLogger("cron:process-broadcasts");
 
@@ -110,6 +111,9 @@ async function handler(request: NextRequest) {
         select: { to: true },
       });
       const alreadySentSet = new Set(alreadySent.map((m) => m.to));
+      const alreadySentPhoneKeys = new Set(
+        alreadySent.map((m) => leadPhoneKey(m.to)).filter(Boolean),
+      );
 
       let batchSent = 0;
       let batchFailed = 0;
@@ -178,7 +182,14 @@ async function handler(request: NextRequest) {
         }
 
         for (const lead of leads) {
-          if (alreadySentSet.has(lead.phone)) continue;
+          const phoneKey = leadPhoneKey(lead.phone);
+          if (
+            !lead.phone ||
+            alreadySentSet.has(lead.phone) ||
+            alreadySentPhoneKeys.has(phoneKey)
+          ) {
+            continue;
+          }
 
           try {
             const leadVars = { ...variables, name: lead.name || "there" };
@@ -196,6 +207,8 @@ async function handler(request: NextRequest) {
               where: { id: logId },
               data: { broadcastId: broadcast.id },
             });
+            alreadySentSet.add(lead.phone);
+            alreadySentPhoneKeys.add(phoneKey);
             batchSent++;
           } catch (err) {
             batchFailed++;

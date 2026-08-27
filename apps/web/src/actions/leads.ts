@@ -5,29 +5,47 @@ import { leadSchema } from "@ru/config";
 import { createPublicAction } from "@/lib/actions/safe-action";
 import { emitSequenceEvent } from "@ru/notifications";
 import { createLogger } from "@ru/config";
+import {
+  leadPhoneVariants,
+  normalizeLeadPhone,
+} from "@/lib/leads";
 
 const log = createLogger("action:submitLead");
 
 export const submitLead = createPublicAction("submitLead", {
   schema: leadSchema,
   handler: async ({ data }) => {
-    const { name, email, phone, source } = data;
-
-    // Normalize empty email to undefined
+    const { name, email, source } = data;
+    const phone = normalizeLeadPhone(data.phone);
+    const phoneVariants = leadPhoneVariants(phone);
     const normalizedEmail = email || undefined;
 
-    // Check for duplicate lead by phone (within last 24 hours to allow re-submissions after a day)
-    const dayAgo = new Date(Date.now() - 24 * 60 * 60_000);
-    const existing = await prisma.lead.findFirst({
+    const existingUser = await prisma.user.findFirst({
       where: {
-        phone,
-        createdAt: { gte: dayAgo },
+        OR: [
+          { phone: { in: phoneVariants } },
+          ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+        ],
       },
+      select: { id: true },
     });
 
-    if (existing) {
-      // Silently succeed -- don't leak that we already have this lead
-      return { id: existing.id };
+    const existingLead = await prisma.lead.findFirst({
+      where: {
+        OR: [
+          { phone: { in: phoneVariants } },
+          ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+        ],
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (existingUser) {
+      return { id: existingLead?.id ?? existingUser.id };
+    }
+
+    if (existingLead) {
+      return { id: existingLead.id };
     }
 
     const lead = await prisma.lead.create({
@@ -39,7 +57,6 @@ export const submitLead = createPublicAction("submitLead", {
       },
     });
 
-    // Enroll lead in automation sequences (fire-and-forget)
     emitSequenceEvent("lead.created", { leadId: lead.id }).catch((err) =>
       log.error({ err }, "Failed to emit lead.created sequence event"),
     );

@@ -11,6 +11,7 @@ import { Footer } from "@/components/footer";
 import { Toaster } from "@/components/toaster";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { SmoothScrollProvider } from "@/components/smooth-scroll-provider";
+import { MarketingLeadPopup } from "@/components/landing/marketing-lead-popup";
 import { clerkAppearance } from "@/lib/clerk-appearance";
 import posthog from 'posthog-js';
 
@@ -117,6 +118,7 @@ export default async function RootLayout({
                 <Footer />
               </SmoothScrollProvider>
               <Toaster />
+              <MarketingLeadPopup />
             </PostHogProvider>
           </NextIntlClientProvider>
         </body>
