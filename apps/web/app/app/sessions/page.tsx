@@ -1,4 +1,5 @@
 import { prisma } from "@ru/db";
+import { CONFIG } from "@ru/config";
 import { getCurrentUser } from "@/lib/auth";
 import { SessionsCalendar } from "./sessions-calendar";
 
@@ -33,11 +34,15 @@ export default async function SessionsPage() {
   // Get available sessions for next 14 days
   const now = new Date();
   const twoWeeksLater = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const joinWindowFloor = new Date(
+    now.getTime() - CONFIG.JOIN_WINDOW_AFTER_MIN * 60 * 1000,
+  );
 
   const sessions = await prisma.session.findMany({
     where: {
-      status: "SCHEDULED",
-      startsAt: { gte: now, lte: twoWeeksLater },
+      status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+      startsAt: { lte: twoWeeksLater },
+      endsAt: { gte: joinWindowFloor },
       ...(accessibleProductTypes.length > 0
         ? { product: { type: { in: accessibleProductTypes as any } } }
         : {}),
@@ -62,14 +67,12 @@ export default async function SessionsPage() {
         title: s.title,
         capacity: s.capacity,
         modalities: s.modalities,
-        joinUrl: s.joinUrl,
         product: { name: s.product.name, type: s.product.type },
         batch: s.batch
           ? { name: s.batch.name, timezone: s.batch.timezone }
           : null,
         bookings: s.bookings,
       }))}
-      userId={user.id}
       userTimezone={userTimezone}
       hasFaceYogaAccess={hasFaceYogaAccess}
       hasPranayamaAccess={hasPranayamaAccess}

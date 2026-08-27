@@ -1,5 +1,7 @@
 import { prisma } from "@ru/db";
+import { CONFIG } from "@ru/config";
 import { getCurrentUser } from "@/lib/auth";
+import { isJoinWindowOpen } from "@/lib/sessions";
 import { Card, CardContent, CardHeader, CardTitle } from "@ru/ui";
 import {
   Calendar,
@@ -100,17 +102,25 @@ export default async function MemberDashboardPage() {
     b.daysOfWeek.includes(todayDow)
   );
 
-  // Get upcoming bookings
-  const upcomingBookings = await prisma.booking.findMany({
-    where: {
-      userId: user.id,
-      status: "CONFIRMED",
-      session: { startsAt: { gte: new Date() } },
-    },
-    include: { session: { include: { batch: true, product: true } } },
-    orderBy: { session: { startsAt: "asc" } },
-    take: 5,
-  });
+  const now = new Date();
+  const joinWindowFloor = new Date(
+    now.getTime() - CONFIG.JOIN_WINDOW_AFTER_MIN * 60 * 1000,
+  );
+  const upcomingSessions = subscribedProductTypes.size
+    ? await prisma.session.findMany({
+        where: {
+          status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+          endsAt: { gte: joinWindowFloor },
+          product: {
+            type: { in: Array.from(subscribedProductTypes) as any },
+          },
+        },
+        include: { batch: true, product: true },
+        orderBy: { startsAt: "asc" },
+        take: 5,
+      })
+    : [];
+  const nextSession = upcomingSessions[0];
 
   const firstName = user.name?.split(" ")[0] || "there";
   const userTimezone = user.timezone || "Asia/Kolkata";
@@ -274,12 +284,10 @@ export default async function MemberDashboardPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {upcomingBookings.length > 0 ? (
+          {nextSession ? (
             <>
               <div className="text-lg font-semibold">
-                {new Date(
-                  upcomingBookings[0]!.session.startsAt
-                ).toLocaleDateString("en-IN", {
+                {new Date(nextSession.startsAt).toLocaleDateString("en-IN", {
                   weekday: "short",
                   month: "short",
                   day: "numeric",
@@ -287,30 +295,41 @@ export default async function MemberDashboardPage() {
                 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                {new Date(
-                  upcomingBookings[0]!.session.startsAt
-                ).toLocaleTimeString("en-IN", {
+                {new Date(nextSession.startsAt).toLocaleTimeString("en-IN", {
                   hour: "2-digit",
                   minute: "2-digit",
                   timeZone: userTimezone,
                   timeZoneName: "short",
                 })}
                 {" \u00b7 "}
-                {upcomingBookings[0]!.session.product?.name ||
-                  upcomingBookings[0]!.session.batch?.name ||
+                {nextSession.product?.name ||
+                  nextSession.batch?.name ||
                   "Session"}
               </p>
+              {isJoinWindowOpen(nextSession.startsAt, nextSession.endsAt) ? (
+                <Link
+                  href={`/app/join/${nextSession.id}`}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 mt-2 transition-colors"
+                >
+                  Join
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              ) : (
+                <p className="text-xs text-muted-foreground/70 mt-2">
+                  Opens 15 min before
+                </p>
+              )}
             </>
           ) : (
             <>
               <div className="text-lg font-semibold text-muted-foreground/50">
-                None booked
+                None upcoming
               </div>
               <Link
                 href="/app/sessions"
                 className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 mt-2 transition-colors"
               >
-                Book a session
+                View sessions
                 <ArrowRight className="h-3 w-3" />
               </Link>
             </>
@@ -514,11 +533,11 @@ export default async function MemberDashboardPage() {
                 ))}
               </div>
               <p className="text-[0.65rem] text-muted-foreground/50 mt-3">
-                All times shown in IST. Book individual sessions from the{" "}
+                All times shown in IST. Join from the{" "}
                 <Link href="/app/sessions" className="text-primary hover:underline">
                   sessions page
                 </Link>
-                .
+                {" "}15 minutes before class.
               </p>
             </CardContent>
           </Card>
@@ -544,7 +563,7 @@ export default async function MemberDashboardPage() {
                   Upcoming Sessions
                 </span>
               </CardTitle>
-              {upcomingBookings.length > 0 && (
+              {upcomingSessions.length > 0 && (
                 <Link
                   href="/app/sessions"
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -555,11 +574,11 @@ export default async function MemberDashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {upcomingBookings.length > 0 ? (
+            {upcomingSessions.length > 0 ? (
               <div className="space-y-3">
-                {upcomingBookings.map((booking, i) => (
+                {upcomingSessions.map((session, i) => (
                   <div
-                    key={booking.id}
+                    key={session.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-3.5 sm:p-4 rounded-xl bg-muted/30 border border-border/50 transition-colors hover:border-border"
                     style={{
                       animationDelay: `${0.45 + i * 0.05}s`,
@@ -569,33 +588,29 @@ export default async function MemberDashboardPage() {
                       <div className="flex items-center gap-2 mb-1.5">
                         <span
                           className={`text-[0.6rem] uppercase tracking-wider px-2 py-0.5 rounded ${
-                            booking.session.product?.type === "FACE_YOGA"
+                            session.product?.type === "FACE_YOGA"
                               ? "bg-accent/15 text-accent"
                               : "bg-primary/15 text-primary"
                           }`}
                         >
-                          {booking.session.product?.name || "Session"}
+                          {session.product?.name || "Session"}
                         </span>
                       </div>
                       <p className="font-medium text-sm">
-                        {booking.session.title ||
-                          booking.session.batch?.name ||
-                          booking.session.product?.name ||
+                        {session.title ||
+                          session.batch?.name ||
+                          session.product?.name ||
                           "Session"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(
-                          booking.session.startsAt
-                        ).toLocaleDateString("en-IN", {
+                        {new Date(session.startsAt).toLocaleDateString("en-IN", {
                           weekday: "short",
                           month: "short",
                           day: "numeric",
                           timeZone: userTimezone,
                         })}{" "}
                         at{" "}
-                        {new Date(
-                          booking.session.startsAt
-                        ).toLocaleTimeString("en-IN", {
+                        {new Date(session.startsAt).toLocaleTimeString("en-IN", {
                           hour: "2-digit",
                           minute: "2-digit",
                           timeZone: userTimezone,
@@ -603,13 +618,19 @@ export default async function MemberDashboardPage() {
                         })}
                       </p>
                     </div>
-                    <Link
-                      href={`/app/join/${booking.session.id}`}
-                      className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 shrink-0 self-start sm:self-center transition-colors"
-                    >
-                      Join
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
+                    {isJoinWindowOpen(session.startsAt, session.endsAt) ? (
+                      <Link
+                        href={`/app/join/${session.id}`}
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 shrink-0 self-start sm:self-center transition-colors"
+                      >
+                        Join
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-muted-foreground shrink-0 self-start sm:self-center">
+                        Opens 15 min before
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -625,7 +646,7 @@ export default async function MemberDashboardPage() {
                   href="/app/sessions"
                   className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 mt-2 transition-colors"
                 >
-                  Book a session
+                  View sessions
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>

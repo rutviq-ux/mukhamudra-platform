@@ -16,6 +16,7 @@ import {
   generateMeetingTitle,
   generateMeetingDescription,
 } from "@/lib/meet-helpers";
+import { isReusedBatchMeetLink } from "@/lib/sessions";
 
 // ---------- updateSession ----------
 
@@ -115,6 +116,7 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
       where: { id: data.id },
       include: {
         product: { select: { name: true } },
+        batch: { select: { meetingLink: true } },
         bookings: {
           where: { status: "CONFIRMED" },
           select: { user: { select: { email: true } } },
@@ -132,7 +134,7 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
     }
 
     // Duplicate guard
-    if (session.joinUrl) {
+    if (session.joinUrl && !isReusedBatchMeetLink(session.joinUrl, session.batch?.meetingLink)) {
       throw new Error("Session already has a Meet link");
     }
 

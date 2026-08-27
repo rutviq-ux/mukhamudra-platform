@@ -8,7 +8,6 @@ import { SessionCard, type SerializedSession } from "./session-card";
 
 interface SessionsCalendarProps {
   sessions: SerializedSession[];
-  userId: string;
   userTimezone: string;
   hasFaceYogaAccess: boolean;
   hasPranayamaAccess: boolean;
@@ -44,7 +43,6 @@ function groupByDate(
 
 export function SessionsCalendar({
   sessions,
-  userId,
   userTimezone,
   hasFaceYogaAccess,
   hasPranayamaAccess,
@@ -83,7 +81,7 @@ export function SessionsCalendar({
               Sessions
             </h1>
             <p className="text-muted-foreground text-sm sm:text-base">
-              Browse and book sessions for the next 14 days.
+              Join opens 15 minutes before class.
             </p>
           </div>
           <div className="flex gap-2 sm:gap-3">
@@ -160,7 +158,6 @@ export function SessionsCalendar({
                 <SessionCard
                   key={session.id}
                   session={session}
-                  userId={userId}
                   userTimezone={userTimezone}
                   hasFaceYogaAccess={hasFaceYogaAccess}
                   hasPranayamaAccess={hasPranayamaAccess}

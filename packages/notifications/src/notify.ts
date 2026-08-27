@@ -317,7 +317,9 @@ export async function sendSessionReminders(): Promise<number> {
 
   for (const session of sessions) {
     const sessionType = session.batch?.name || session.title || "Yoga";
-    const joinLink = session.joinUrl || "Check your dashboard for the link";
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com";
+    const joinLink = `${appUrl}/app/join/${session.id}`;
 
     for (const booking of session.bookings) {
       // WhatsApp: use the approved class_reminder template (directs to dashboard)
