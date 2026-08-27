@@ -5,9 +5,10 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { submitLead } from "@/actions/leads";
 import { COUNTRY_CODES } from "@/data/country-codes";
 
-const DELAY_MS = 15_000;
-const SCROLL_THRESHOLD = 0.35;
-const STORAGE_KEY = "mm_lead_popup_dismissed";
+const DELAY_MS = 8_000;
+const SCROLL_THRESHOLD = 0.2;
+const SUBMITTED_KEY = "mm_lead_popup_submitted";
+const SESSION_DISMISS_KEY = "mm_lead_popup_dismissed_session";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -75,7 +76,8 @@ export function LeadPopup() {
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (localStorage.getItem(STORAGE_KEY)) return;
+    if (localStorage.getItem(SUBMITTED_KEY)) return;
+    if (sessionStorage.getItem(SESSION_DISMISS_KEY)) return;
 
     let fired = false;
     const show = () => {
@@ -87,9 +89,9 @@ export function LeadPopup() {
     const timer = setTimeout(show, DELAY_MS);
 
     const onScroll = () => {
-      const scrollRatio =
-        window.scrollY /
-        (document.documentElement.scrollHeight - window.innerHeight);
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+      const scrollRatio = docHeight > 0 ? window.scrollY / docHeight : 0;
       if (scrollRatio >= SCROLL_THRESHOLD) show();
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -102,7 +104,7 @@ export function LeadPopup() {
 
   const dismiss = () => {
     setOpen(false);
-    localStorage.setItem(STORAGE_KEY, "1");
+    sessionStorage.setItem(SESSION_DISMISS_KEY, "1");
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -137,7 +139,7 @@ export function LeadPopup() {
       }
 
       setSubmitted(true);
-      localStorage.setItem(STORAGE_KEY, "1");
+      localStorage.setItem(SUBMITTED_KEY, "1");
 
       setTimeout(() => setOpen(false), 3200);
     });

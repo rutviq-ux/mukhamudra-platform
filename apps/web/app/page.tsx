@@ -55,9 +55,6 @@ const FinalCtaSection = dynamic(() =>
     (m) => m.FinalCtaSection
   )
 );
-const LeadPopup = dynamic(() =>
-  import("@/components/landing/lead-popup").then((m) => m.LeadPopup)
-);
 
 export const metadata = {
   title: "Mukha Mudra | Live Face Yoga & Pranayama",
@@ -83,8 +80,6 @@ export default function HomePage() {
         <FaqSection />
         <FinalCtaSection />
       </div>
-
-      <LeadPopup />
     </>
   );
 }
