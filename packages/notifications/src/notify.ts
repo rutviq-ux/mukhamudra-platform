@@ -310,49 +310,89 @@ export async function sendSessionReminders(): Promise<number> {
         },
       },
       batch: { select: { name: true } },
+      product: { select: { type: true } },
     },
   });
 
   let sent = 0;
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com";
 
   for (const session of sessions) {
     const sessionType = session.batch?.name || session.title || "Yoga";
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com";
     const joinLink = `${appUrl}/app/join/${session.id}`;
+    const dashboardUrl = `${appUrl}/app`;
 
+    const recipientSelect = {
+      id: true,
+      name: true,
+      phone: true,
+      email: true,
+      whatsappOptIn: true,
+    } as const;
+
+    const members = await prisma.user.findMany({
+      where: {
+        memberships: {
+          some: {
+            status: "ACTIVE",
+            plan: {
+              product: {
+                type: { in: [session.product.type, "BUNDLE"] },
+              },
+            },
+          },
+        },
+      },
+      select: recipientSelect,
+    });
+
+    const recipients = new Map(
+      members.map((user) => [user.id, user] as const),
+    );
     for (const booking of session.bookings) {
-      // WhatsApp: use the approved class_reminder template (directs to dashboard)
+      if (recipients.has(booking.user.id)) continue;
       const user = await prisma.user.findUnique({
         where: { id: booking.user.id },
-        select: { name: true, phone: true, whatsappOptIn: true },
+        select: recipientSelect,
       });
+      if (user) recipients.set(user.id, user);
+    }
 
-      if (user?.phone && user.whatsappOptIn) {
+    for (const user of recipients.values()) {
+      const name = user.name?.split(" ")[0] || "there";
+
+      if (user.phone && user.whatsappOptIn) {
         await sendWhatsApp({
-          userId: booking.user.id,
+          userId: user.id,
           phone: user.phone,
           body: "",
           templateName: "mukhamudra_class_reminder",
-          templateParams: [
-            user.name?.split(" ")[0] || "there",
-            sessionType,
-            `${process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com"}/app`,
-          ],
+          templateParams: [name, sessionType, dashboardUrl],
         });
         sent++;
       }
 
-      // Also send push notification (delivered directly via web-push)
-      const pushLogId = await queueNotification({
-        userId: booking.user.id,
-        templateName: "session_reminder_push",
-        variables: {
-          name: booking.user.name || "there",
-          session_type: sessionType,
-          join_link: joinLink,
-        },
-      });
+      const [, pushLogId] = await Promise.all([
+        queueNotification({
+          userId: user.id,
+          templateName: "session_reminder_email",
+          variables: {
+            name,
+            session_type: sessionType,
+            join_link: joinLink,
+          },
+        }),
+        queueNotification({
+          userId: user.id,
+          templateName: "session_reminder_push",
+          variables: {
+            name,
+            session_type: sessionType,
+            join_link: joinLink,
+          },
+        }),
+      ]);
       if (pushLogId) {
         await sendPushForMessageLog(pushLogId).catch((err) =>
           log.error({ err }, "Failed to send push notification"),
