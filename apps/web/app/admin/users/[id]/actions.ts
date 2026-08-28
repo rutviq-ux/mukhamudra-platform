@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@ru/db";
 import { membershipStatusSchema, createLogger } from "@ru/config";
 import { createAdminAction } from "@/lib/actions/safe-action";
+import { cancelOverlappingMonthlyMemberships } from "@/lib/cancel-overlapping-monthly";
 
 const log = createLogger("action:updateMembershipStatus");
 
@@ -63,6 +64,10 @@ export const updateMembershipStatus = createAdminAction(
       }
 
       await prisma.membership.update({ where: { id }, data: updateData });
+
+      if (newStatus === "ACTIVE") {
+        await cancelOverlappingMonthlyMemberships(id);
+      }
 
       log.info(
         { membershipId: id, from: membership.status, to: newStatus },

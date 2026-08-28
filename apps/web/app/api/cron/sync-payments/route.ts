@@ -4,6 +4,7 @@ import { createLogger } from "@ru/config";
 import { withCronAuth } from "@/lib/cron-auth";
 import { getRazorpay } from "@/lib/razorpay";
 import { getSubscriptionPeriod } from "@/lib/memberships";
+import { cancelOverlappingMonthlyMemberships } from "@/lib/cancel-overlapping-monthly";
 import {
   notifySubscriptionActivated,
   notifyBundleWelcome,
@@ -75,6 +76,14 @@ async function handler(request: NextRequest) {
             "Membership activated via sync",
           );
           results.memberships.synced++;
+
+          await cancelOverlappingMonthlyMemberships(membership.id).catch(
+            (err) =>
+              log.error(
+                { err, membershipId: membership.id },
+                "Sync: failed to cancel overlapping monthly memberships",
+              ),
+          );
 
           // Fire notifications (same as webhook)
           const isBundle = membership.plan.product.type === "BUNDLE";

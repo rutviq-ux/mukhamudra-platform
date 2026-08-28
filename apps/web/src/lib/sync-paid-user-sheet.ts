@@ -66,7 +66,6 @@ async function loadPaidUserContext(userId: string) {
           plan: { slug: { not: "recording-addon" } },
         },
         orderBy: { paidAt: "desc" },
-        take: 1,
         select: { paidAt: true },
       },
     },
@@ -131,6 +130,7 @@ export async function syncPaidUserToSheet(
     batches,
     memberships: classMemberships,
     paidAt,
+    paidClassOrderCount: user.orders.length,
   });
 
   if (!row) {

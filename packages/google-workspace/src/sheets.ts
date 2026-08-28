@@ -15,6 +15,7 @@ export const PAID_USER_SHEET_HEADERS = [
   "Period End",
   "Status",
   "User Id",
+  "Customer Type",
 ] as const;
 
 export type PaidUserSheetStatus = "ACTIVE" | "CANCELLED" | "EXPIRED";
@@ -33,6 +34,7 @@ export interface PaidUserSheetRow {
   periodEnd: string;
   status: PaidUserSheetStatus;
   userId: string;
+  customerType: "new" | "repeat";
 }
 
 export interface EnsurePaidUsersTabResult {
@@ -69,6 +71,7 @@ function rowToValues(row: PaidUserSheetRow): string[] {
     row.periodEnd,
     row.status,
     row.userId,
+    row.customerType,
   ];
 }
 

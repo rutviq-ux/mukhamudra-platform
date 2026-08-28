@@ -4,8 +4,11 @@ import {
   isClassMembership,
   deriveSheetStatus,
   deriveBatchLabels,
+  deriveCustomerType,
   formatBatchTime,
   formatSheetDate,
+  monthlyOverlapsAnnual,
+  selectMembershipsForSheet,
 } from "@/lib/build-paid-user-row";
 
 const faceAnnual = {
@@ -65,6 +68,7 @@ describe("buildPaidUserSheetRow", () => {
       periodEnd: "2027-01-01",
     });
     expect(row?.plan).toContain("face-annual");
+    expect(row?.customerType).toBe("new");
   });
 
   it("skips recording-addon-only purchases", () => {
@@ -185,5 +189,78 @@ describe("deriveSheetStatus", () => {
         },
       ]),
     ).toBe("ACTIVE");
+  });
+});
+
+const faceMonthly = {
+  status: "ACTIVE" as const,
+  periodStart: new Date("2026-01-01T00:00:00.000Z"),
+  periodEnd: new Date("2026-02-01T00:00:00.000Z"),
+  plan: {
+    slug: "face-monthly",
+    name: "Face Yoga Monthly",
+    interval: "MONTHLY" as const,
+    product: { type: "FACE_YOGA" as const },
+  },
+};
+
+describe("selectMembershipsForSheet", () => {
+  it("drops monthly when annual is active for the same product", () => {
+    const selected = selectMembershipsForSheet([faceMonthly, faceAnnual]);
+    expect(selected).toHaveLength(1);
+    expect(selected[0]?.plan.interval).toBe("ANNUAL");
+  });
+});
+
+describe("buildPaidUserSheetRow overlapping plans", () => {
+  it("prefers annual interval when monthly and annual are both active", () => {
+    const row = buildPaidUserSheetRow({
+      userId: "user_1",
+      name: "Asha",
+      email: "asha@example.com",
+      phone: "+919876543210",
+      memberships: [faceMonthly, faceAnnual],
+      paidAt: new Date("2026-01-01T00:00:00.000Z"),
+      paidClassOrderCount: 2,
+    });
+
+    expect(row?.interval).toBe("annual");
+    expect(row?.plan).toContain("face-annual");
+    expect(row?.plan).not.toContain("face-monthly");
+    expect(row?.customerType).toBe("repeat");
+  });
+});
+
+describe("deriveCustomerType", () => {
+  it("marks a first paid membership as new", () => {
+    expect(
+      deriveCustomerType({ memberships: [faceAnnual], paidClassOrderCount: 1 }),
+    ).toBe("new");
+  });
+
+  it("marks prior cancelled memberships as repeat", () => {
+    expect(
+      deriveCustomerType({
+        memberships: [
+          { ...faceMonthly, status: "CANCELLED" },
+          faceAnnual,
+        ],
+        paidClassOrderCount: 1,
+      }),
+    ).toBe("repeat");
+  });
+
+  it("marks multiple paid class orders as repeat", () => {
+    expect(
+      deriveCustomerType({ memberships: [faceAnnual], paidClassOrderCount: 2 }),
+    ).toBe("repeat");
+  });
+});
+
+describe("monthlyOverlapsAnnual", () => {
+  it("cancels monthly for the same product or a bundle annual", () => {
+    expect(monthlyOverlapsAnnual("FACE_YOGA", "FACE_YOGA")).toBe(true);
+    expect(monthlyOverlapsAnnual("PRANAYAMA", "FACE_YOGA")).toBe(false);
+    expect(monthlyOverlapsAnnual("FACE_YOGA", "BUNDLE")).toBe(true);
   });
 });

@@ -28,6 +28,7 @@ import {
 } from "@ru/notifications";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { getSubscriptionPeriod } from "@/lib/memberships";
+import { cancelOverlappingMonthlyMemberships } from "@/lib/cancel-overlapping-monthly";
 import { getPostHogServer } from "@/lib/posthog-server";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
 
@@ -435,6 +436,13 @@ async function handleSubscriptionActivated(payload: any) {
 
   log.info({ subscriptionId }, "Membership activated");
 
+  await cancelOverlappingMonthlyMemberships(membership.id).catch((err) =>
+    log.error(
+      { err, membershipId: membership.id },
+      "Failed to cancel overlapping monthly memberships",
+    ),
+  );
+
   const posthog = getPostHogServer();
   posthog.capture({
     distinctId: membership.userId,
@@ -595,6 +603,13 @@ async function handleSubscriptionCharged(payload: any) {
   log.info(
     { subscriptionId, periodEnd: currentPeriodEnd },
     "Membership renewed",
+  );
+
+  await cancelOverlappingMonthlyMemberships(membership.id).catch((err) =>
+    log.error(
+      { err, membershipId: membership.id },
+      "Failed to cancel overlapping monthly memberships",
+    ),
   );
 
   const posthog = getPostHogServer();
