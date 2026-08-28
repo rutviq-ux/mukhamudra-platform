@@ -1236,7 +1236,49 @@ async function main() {
     },
   });
 
-  console.log("✅ Message templates created (55 WhatsApp + 8 Email = 63 templates)\n");
+  await prisma.messageTemplate.upsert({
+    where: { name: "session_reminder_email" },
+    update: {
+      subject: "Class starts in 15 minutes — {{session_type}}",
+      body: "{{name}},\n\nYour {{session_type}} session begins in 15 minutes.\n\nJoin from your dashboard:\n{{join_link}}\n\nJoin opens 15 minutes before class.\n\nNamaste,\nMukha Mudra",
+      isTransactional: true,
+    },
+    create: {
+      channel: "EMAIL",
+      name: "session_reminder_email",
+      subject: "Class starts in 15 minutes — {{session_type}}",
+      body: "{{name}},\n\nYour {{session_type}} session begins in 15 minutes.\n\nJoin from your dashboard:\n{{join_link}}\n\nJoin opens 15 minutes before class.\n\nNamaste,\nMukha Mudra",
+      variables: ["name", "session_type", "join_link"],
+      isActive: true,
+      isTransactional: true,
+    },
+  });
+
+  await prisma.messageTemplate.upsert({
+    where: { name: "payment_health_weekly_email" },
+    update: {
+      subject: "Weekly payment health — {{failed_count}} failed",
+      body: "Payment health for the last 7 days.\n\nFailed: {{failed_count}} ({{failed_amount}})\nPending: {{pending_count}}\nPaid: {{paid_count}}\n\n{{details}}\n\nOpen Admin → Payments for the full list.",
+      isTransactional: true,
+    },
+    create: {
+      channel: "EMAIL",
+      name: "payment_health_weekly_email",
+      subject: "Weekly payment health — {{failed_count}} failed",
+      body: "Payment health for the last 7 days.\n\nFailed: {{failed_count}} ({{failed_amount}})\nPending: {{pending_count}}\nPaid: {{paid_count}}\n\n{{details}}\n\nOpen Admin → Payments for the full list.",
+      variables: [
+        "failed_count",
+        "failed_amount",
+        "pending_count",
+        "paid_count",
+        "details",
+      ],
+      isActive: true,
+      isTransactional: true,
+    },
+  });
+
+  console.log("✅ Message templates created (55 WhatsApp + 10 Email = 65 templates)\n");
 
   console.log("🎉 Database seeded successfully!");
 }

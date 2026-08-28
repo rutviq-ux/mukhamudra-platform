@@ -208,8 +208,22 @@ const SERVER_ENV_GROUPS: Record<string, { title: string; description: string; ke
   },
   google: {
     title: "Google Workspace",
-    description: "Calendar & Drive integration",
-    keys: ["GOOGLE_SERVICE_ACCOUNT_KEY_BASE64", "GOOGLE_IMPERSONATE_EMAIL", "GOOGLE_CALENDAR_ID"],
+    description: "Calendar, Drive, and Paid Users sheet",
+    keys: [
+      "GOOGLE_SERVICE_ACCOUNT_KEY_BASE64",
+      "GOOGLE_IMPERSONATE_EMAIL",
+      "GOOGLE_CALENDAR_ID",
+      "GOOGLE_SERVICE_ACCOUNT_EMAIL",
+      "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY",
+      "GOOGLE_PAID_USERS_SHEET_ID",
+      "GOOGLE_PAID_USERS_TAB",
+      "PAID_USERS_SHEET_SYNC",
+    ],
+  },
+  resend: {
+    title: "Resend",
+    description: "Transactional email (class reminders, receipts)",
+    keys: ["RESEND_API_KEY", "RESEND_FROM_EMAIL"],
   },
   instagram: {
     title: "Instagram",

@@ -86,6 +86,11 @@ const SCHEDULES = [
     cron: "0 3 * * *", // Daily 03:00 UTC
     comment: "Bootstrap/reconcile Paid Users Google Sheet tab for Interakt",
   },
+  {
+    path: "/api/cron/payment-health",
+    cron: "0 3 * * 1", // Monday 03:00 UTC = 8:30 AM IST
+    comment: "Weekly failed-payment health email to admin/ops",
+  },
 ];
 
 async function listExistingSchedules(): Promise<

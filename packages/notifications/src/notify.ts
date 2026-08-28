@@ -317,13 +317,16 @@ export async function sendSessionReminders(): Promise<number> {
 
   for (const session of sessions) {
     const sessionType = session.batch?.name || session.title || "Yoga";
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com";
     const joinLink = session.joinUrl || "Check your dashboard for the link";
+    const dashboardJoin = `${appUrl}/app/join/${session.id}`;
 
     for (const booking of session.bookings) {
       // WhatsApp: use the approved class_reminder template (directs to dashboard)
       const user = await prisma.user.findUnique({
         where: { id: booking.user.id },
-        select: { name: true, phone: true, whatsappOptIn: true },
+        select: { name: true, phone: true, email: true, whatsappOptIn: true },
       });
 
       if (user?.phone && user.whatsappOptIn) {
@@ -339,6 +342,18 @@ export async function sendSessionReminders(): Promise<number> {
           ],
         });
         sent++;
+      }
+
+      if (user?.email) {
+        await queueNotification({
+          userId: booking.user.id,
+          templateName: "session_reminder_email",
+          variables: {
+            name: user.name?.split(" ")[0] || booking.user.name || "there",
+            session_type: sessionType,
+            join_link: dashboardJoin,
+          },
+        });
       }
 
       // Also send push notification (delivered directly via web-push)
@@ -522,6 +537,30 @@ export async function notifySubscriptionExpiringSoon(opts: {
       plan_name: opts.planName,
       end_date: opts.endDate,
       renewal_link: `${appUrl}/pricing`,
+    },
+  });
+}
+
+/**
+ * Weekly payment health report for ops/admin.
+ */
+export async function notifyPaymentHealthWeekly(opts: {
+  userId: string;
+  failedCount: string;
+  failedAmount: string;
+  pendingCount: string;
+  paidCount: string;
+  details: string;
+}): Promise<void> {
+  await queueNotification({
+    userId: opts.userId,
+    templateName: "payment_health_weekly_email",
+    variables: {
+      failed_count: opts.failedCount,
+      failed_amount: opts.failedAmount,
+      pending_count: opts.pendingCount,
+      paid_count: opts.paidCount,
+      details: opts.details,
     },
   });
 }
