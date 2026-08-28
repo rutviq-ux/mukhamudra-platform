@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { User, Video } from "lucide-react";
+import { isJoinWindowOpen, joinWindowBounds } from "@/lib/sessions";
 import { SessionTimeDisplay } from "./session-time-display";
-import { SessionActions } from "./session-actions";
 
 export interface SerializedSession {
   id: string;
@@ -12,7 +13,6 @@ export interface SerializedSession {
   title: string | null;
   capacity: number;
   modalities: string[];
-  joinUrl: string | null;
   product: { name: string; type: string };
   batch: { name: string; timezone: string } | null;
   bookings: { id: string; userId: string }[];
@@ -20,50 +20,57 @@ export interface SerializedSession {
 
 interface SessionCardProps {
   session: SerializedSession;
-  userId: string;
   userTimezone: string;
   hasFaceYogaAccess: boolean;
   hasPranayamaAccess: boolean;
 }
 
-function canJoinSession(startsAt: string, endsAt: string): boolean {
-  const now = new Date();
-  const start = new Date(startsAt);
-  const end = new Date(endsAt);
-  const minutesUntilStart = (start.getTime() - now.getTime()) / (1000 * 60);
-  return minutesUntilStart <= 15 && minutesUntilStart > -60 && now < end;
+function formatCountdown(diffMs: number): string {
+  if (diffMs <= 0) return "";
+  const totalMin = Math.ceil(diffMs / 60_000);
+  if (totalMin < 1) return "< 1m";
+  if (totalMin >= 1440) {
+    const d = Math.floor(totalMin / 1440);
+    const h = Math.floor((totalMin % 1440) / 60);
+    return h > 0 ? `${d}d ${h}h` : `${d}d`;
+  }
+  if (totalMin < 60) return `${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function useNow(intervalMs = 5_000) {
+  const [now, setNow] = useState(() => new Date());
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const interval = setInterval(() => setNow(new Date()), intervalMs);
+    return () => clearInterval(interval);
+  }, [intervalMs]);
+
+  return { now, mounted };
 }
 
 export function SessionCard({
   session,
-  userId,
   userTimezone,
   hasFaceYogaAccess,
   hasPranayamaAccess,
 }: SessionCardProps) {
-  const isFull = session.bookings.length >= session.capacity;
-  const isBooked = session.bookings.some((b) => b.userId === userId);
+  const { now, mounted } = useNow();
   const isFaceYoga = session.product.type === "FACE_YOGA";
-  const joinable =
-    isBooked && canJoinSession(session.startsAt, session.endsAt) && session.joinUrl;
-
-  let canBook = false;
-  let reason = "";
-
-  if (isBooked) {
-    // Already booked
-  } else if (isFull) {
-    reason = "Full";
-  } else if (isFaceYoga) {
-    canBook = hasFaceYogaAccess;
-    reason = !hasFaceYogaAccess ? "No membership" : "";
-  } else {
-    canBook = hasPranayamaAccess;
-    reason = !hasPranayamaAccess ? "No membership" : "";
-  }
+  const hasAccess = isFaceYoga ? hasFaceYogaAccess : hasPranayamaAccess;
+  const start = new Date(session.startsAt);
+  const end = new Date(session.endsAt);
+  const { openAt } = joinWindowBounds(start, end);
+  const joinOpen = isJoinWindowOpen(start, end, now);
+  const beforeOpen = now.getTime() < openAt.getTime();
+  const countdown = mounted ? formatCountdown(start.getTime() - now.getTime()) : "";
 
   const durationMins = Math.round(
-    (new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60_000
+    (end.getTime() - start.getTime()) / 60_000
   );
   const hasCustomTitle =
     session.title &&
@@ -117,7 +124,9 @@ export function SessionCard({
         )}
       </div>
       <div className="flex items-center gap-2 shrink-0 pt-px">
-        {joinable && (
+        {!hasAccess ? (
+          <span className="text-xs text-muted-foreground/60">No membership</span>
+        ) : joinOpen ? (
           <Link
             href={`/app/join/${session.id}`}
             className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-emerald-500/90 text-white rounded-full hover:bg-emerald-600 transition-colors"
@@ -125,19 +134,18 @@ export function SessionCard({
             <Video className="h-3 w-3" />
             Join
           </Link>
-        )}
-        <SessionActions
-          sessionId={session.id}
-          isBooked={isBooked}
-          canBook={canBook}
-          reason={reason}
-          startsAt={session.startsAt}
-          bookingId={
-            isBooked
-              ? session.bookings.find((b) => b.userId === userId)?.id
-              : undefined
-          }
-        />
+        ) : beforeOpen ? (
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-xs text-muted-foreground">
+              Opens 15 min before
+            </span>
+            {countdown && (
+              <span className="text-[10px] text-muted-foreground">
+                {countdown}
+              </span>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );

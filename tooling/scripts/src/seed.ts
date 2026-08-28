@@ -1221,6 +1221,24 @@ async function main() {
   });
 
   await prisma.messageTemplate.upsert({
+    where: { name: "session_reminder_email" },
+    update: {
+      subject: "Class starts in 15 minutes — {{session_type}}",
+      body: "{{name}},\n\nYour {{session_type}} session begins in 15 minutes.\n\nJoin from your dashboard:\n{{join_link}}\n\nJoin opens 15 minutes before class.\n\nNamaste,\nMukha Mudra",
+      isTransactional: true,
+    },
+    create: {
+      channel: "EMAIL",
+      name: "session_reminder_email",
+      subject: "Class starts in 15 minutes — {{session_type}}",
+      body: "{{name}},\n\nYour {{session_type}} session begins in 15 minutes.\n\nJoin from your dashboard:\n{{join_link}}\n\nJoin opens 15 minutes before class.\n\nNamaste,\nMukha Mudra",
+      variables: ["name", "session_type", "join_link"],
+      isActive: true,
+      isTransactional: true,
+    },
+  });
+
+  await prisma.messageTemplate.upsert({
     where: { name: "membership_cancelled_email" },
     update: {
       subject: "Subscription Cancelled — Mukha Mudra",
@@ -1236,7 +1254,7 @@ async function main() {
     },
   });
 
-  console.log("✅ Message templates created (55 WhatsApp + 8 Email = 63 templates)\n");
+  console.log("✅ Message templates created (55 WhatsApp + 9 Email = 64 templates)\n");
 
   console.log("🎉 Database seeded successfully!");
 }

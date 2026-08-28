@@ -138,19 +138,12 @@ async function handleIncomingMessage(message: any, contact: any) {
 
   // ─── Handle LINK — send next class join URL ───
   if (text === "link" && user && user.memberships.length > 0) {
-    const nextSession = await prisma.session.findFirst({
-      where: {
-        startsAt: { gt: new Date() },
-        bookings: { some: { userId: user.id } },
-      },
-      orderBy: { startsAt: "asc" },
-    });
-
-    if (nextSession?.joinUrl) {
-      await sendCloudMessage(from, `Here's your class link 🧘\n\n${nextSession.joinUrl}\n\nSee you soon! 🌿`);
-    } else {
-      await sendCloudMessage(from, "Your class link will be ready 5 minutes before the session starts. Check your dashboard: https://www.mukhamudra.com/app 🌿");
-    }
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com";
+    await sendCloudMessage(
+      from,
+      `Join from your dashboard 🧘\n\n${appUrl}/app\n\nJoin opens 15 minutes before class. See you soon! 🌿`,
+    );
     return;
   }
 

@@ -1,7 +1,4 @@
-/**
- * Shared session-generation helpers used by both the cron job
- * (generate-sessions) and the admin regenerate endpoint.
- */
+import { CONFIG } from "@ru/config";
 
 export interface BatchConfig {
   id: string;
@@ -103,10 +100,39 @@ export function buildSessionsForBatch(
       endsAt: endsAtUtc,
       capacity: batch.capacity,
       ...(coachId ? { coachId } : {}),
-      ...(batch.meetingLink ? { joinUrl: batch.meetingLink } : {}),
-      ...(batch.meetingId ? { meetingId: batch.meetingId } : {}),
     });
   }
 
   return sessions;
+}
+
+export function joinWindowBounds(
+  startsAt: Date,
+  endsAt: Date,
+  beforeMin = CONFIG.JOIN_WINDOW_BEFORE_MIN,
+  afterMin = CONFIG.JOIN_WINDOW_AFTER_MIN,
+): { openAt: Date; closeAt: Date } {
+  return {
+    openAt: new Date(startsAt.getTime() - beforeMin * 60_000),
+    closeAt: new Date(endsAt.getTime() + afterMin * 60_000),
+  };
+}
+
+export function isJoinWindowOpen(
+  startsAt: Date | string,
+  endsAt: Date | string,
+  now = new Date(),
+): boolean {
+  const start = startsAt instanceof Date ? startsAt : new Date(startsAt);
+  const end = endsAt instanceof Date ? endsAt : new Date(endsAt);
+  const { openAt, closeAt } = joinWindowBounds(start, end);
+  const t = now.getTime();
+  return t >= openAt.getTime() && t <= closeAt.getTime();
+}
+
+export function isReusedBatchMeetLink(
+  joinUrl: string | null | undefined,
+  batchMeetingLink: string | null | undefined,
+): boolean {
+  return Boolean(joinUrl && batchMeetingLink && joinUrl === batchMeetingLink);
 }

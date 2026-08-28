@@ -70,7 +70,7 @@ export default async function CheckoutSuccessPage() {
               <Link href="/app/sessions">
                 <Button size="lg" variant="accent" className="w-full group">
                   <Calendar className="mr-2 h-4 w-4" />
-                  Book Your First Session
+                  View Sessions
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>

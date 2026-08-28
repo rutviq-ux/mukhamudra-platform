@@ -3,20 +3,23 @@ import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { withCronAuth } from "@/lib/cron-auth";
 import { buildSessionsForBatch } from "@/lib/sessions";
+import { clearReusedBatchMeetingLinks } from "@/lib/clear-reused-meet-links";
 import { getConfig } from "@/lib/config";
 
 const log = createLogger("cron:generate-sessions");
 
 async function handler(request: NextRequest) {
   try {
+    const cleared = await clearReusedBatchMeetingLinks();
+
     const batches = await prisma.batch.findMany({
       where: { isActive: true },
       include: { product: true },
     });
 
     if (batches.length === 0) {
-      log.info("No active batches found");
-      return NextResponse.json({ status: "ok", generated: 0 });
+      log.info({ cleared }, "No active batches found");
+      return NextResponse.json({ status: "ok", generated: 0, cleared });
     }
 
     let totalGenerated = 0;
@@ -72,7 +75,7 @@ async function handler(request: NextRequest) {
     }
 
     log.info(
-      { totalGenerated, batchCount: batches.length },
+      { totalGenerated, batchCount: batches.length, cleared },
       "Session generation complete"
     );
 
@@ -80,6 +83,7 @@ async function handler(request: NextRequest) {
       status: "ok",
       generated: totalGenerated,
       batches: batches.length,
+      cleared,
     });
   } catch (error) {
     log.error({ err: error }, "Session generation failed");

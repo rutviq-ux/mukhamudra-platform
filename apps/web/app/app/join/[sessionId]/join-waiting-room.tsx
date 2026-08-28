@@ -189,8 +189,8 @@ export function JoinWaitingRoom({
                     until session starts
                   </p>
                   <p className="text-xs text-muted-foreground/60 mt-4">
-                    The meeting link will appear here automatically once your
-                    coach generates it.
+                    The meeting link will appear here automatically about 15
+                    minutes before class.
                   </p>
                 </>
               ) : (
