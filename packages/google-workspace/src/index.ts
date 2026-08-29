@@ -12,6 +12,7 @@ export type {
   PaidUserSheetStatus,
   EnsurePaidUsersTabResult,
   UpsertPaidUserRowResult,
+  LeadSheetRow,
 } from "./sheets";
 export { createMeetSpace, findRecording, listConferenceParticipants, resolveSpaceName, setSpaceAccessType } from "./meet";
 export {
@@ -21,8 +22,11 @@ export {
 } from "./calendar";
 export {
   PAID_USER_SHEET_HEADERS,
+  LEAD_SHEET_HEADERS,
   parsePhoneForSheet,
   ensurePaidUsersTab,
   upsertPaidUserRow,
+  ensureLeadsTab,
+  upsertLeadRow,
   createSheetsClient,
 } from "./sheets";

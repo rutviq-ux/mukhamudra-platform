@@ -84,7 +84,12 @@ const SCHEDULES = [
   {
     path: "/api/cron/sync-paid-users-sheet",
     cron: "0 3 * * *", // Daily 03:00 UTC
-    comment: "Bootstrap/reconcile Paid Users Google Sheet tab for Interakt",
+    comment: "Bootstrap/reconcile Paid Users and Leads Google Sheet tabs",
+  },
+  {
+    path: "/api/cron/payment-health",
+    cron: "0 3 * * 1",
+    comment: "Weekly failed-payment health email to admin/ops",
   },
 ];
 

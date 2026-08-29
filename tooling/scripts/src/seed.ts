@@ -1239,6 +1239,30 @@ async function main() {
   });
 
   await prisma.messageTemplate.upsert({
+    where: { name: "payment_health_weekly_email" },
+    update: {
+      subject: "Weekly payment health — {{failed_count}} failed",
+      body: "Payment health for the last 7 days.\n\nFailed: {{failed_count}} ({{failed_amount}})\nPending: {{pending_count}}\nPaid: {{paid_count}}\n\n{{details}}\n\nOpen Admin → Payments for the full list.",
+      isTransactional: true,
+    },
+    create: {
+      channel: "EMAIL",
+      name: "payment_health_weekly_email",
+      subject: "Weekly payment health — {{failed_count}} failed",
+      body: "Payment health for the last 7 days.\n\nFailed: {{failed_count}} ({{failed_amount}})\nPending: {{pending_count}}\nPaid: {{paid_count}}\n\n{{details}}\n\nOpen Admin → Payments for the full list.",
+      variables: [
+        "failed_count",
+        "failed_amount",
+        "pending_count",
+        "paid_count",
+        "details",
+      ],
+      isActive: true,
+      isTransactional: true,
+    },
+  });
+
+  await prisma.messageTemplate.upsert({
     where: { name: "membership_cancelled_email" },
     update: {
       subject: "Subscription Cancelled — Mukha Mudra",
@@ -1254,7 +1278,7 @@ async function main() {
     },
   });
 
-  console.log("✅ Message templates created (55 WhatsApp + 9 Email = 64 templates)\n");
+  console.log("✅ Message templates created (55 WhatsApp + 10 Email = 65 templates)\n");
 
   console.log("🎉 Database seeded successfully!");
 }

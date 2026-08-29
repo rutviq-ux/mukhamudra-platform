@@ -2,9 +2,13 @@ import { prisma } from "@ru/db";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@ru/ui";
-import { CreditCard, TrendingUp } from "lucide-react";
+import { CreditCard, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { OrderStatusActions } from "./order-status-actions";
+import {
+  formatInrFromPaise,
+  getPaymentHealthSummary,
+} from "@/lib/payment-health";
 
 export default async function AdminPaymentsPage() {
   const user = await getCurrentUser();
@@ -14,7 +18,7 @@ export default async function AdminPaymentsPage() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-  const [orders, stats] = await Promise.all([
+  const [orders, stats, weekHealth] = await Promise.all([
     prisma.order.findMany({
       orderBy: { createdAt: "desc" },
       take: 100,
@@ -48,6 +52,7 @@ export default async function AdminPaymentsPage() {
         _sum: { amountPaise: true },
       }),
     ]),
+    getPaymentHealthSummary(),
   ]);
 
   const [
@@ -126,6 +131,51 @@ export default async function AdminPaymentsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card glass className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            Failed this week ({weekHealth.failedCount})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            {formatInrFromPaise(weekHealth.failedAmountPaise)} failed ·{" "}
+            {weekHealth.pendingCount} pending · {weekHealth.paidCount} paid in
+            the last 7 days
+          </p>
+          {weekHealth.failedOrders.length > 0 ? (
+            <div className="space-y-2">
+              {weekHealth.failedOrders.slice(0, 10).map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between gap-3 text-sm py-2 border-b border-border/40 last:border-0"
+                >
+                  <Link
+                    href={`/admin/users/${order.user.id}`}
+                    className="min-w-0 hover:text-primary"
+                  >
+                    <span className="font-medium">
+                      {order.user.name || "Unknown"}
+                    </span>
+                    <span className="text-muted-foreground ml-2">
+                      {order.user.email}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 text-muted-foreground">
+                    {order.plan.name} · {formatInrFromPaise(order.amountPaise)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No failed orders in the last 7 days.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Orders Table */}
       <Card glass>

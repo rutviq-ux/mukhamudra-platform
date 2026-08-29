@@ -58,8 +58,21 @@ export default async function SuperSettingsPage() {
     WA_BOT_ENABLED: process.env.WA_BOT_ENABLED ?? "false",
     WA_BOT_SESSION_PATH: process.env.WA_BOT_SESSION_PATH ?? "./wa-session",
     GOOGLE_SERVICE_ACCOUNT_KEY_BASE64: presence(process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64),
+    GOOGLE_SERVICE_ACCOUNT_EMAIL: presence(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
+    GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: presence(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY),
+    GOOGLE_PAID_USERS_SHEET_ID: presence(process.env.GOOGLE_PAID_USERS_SHEET_ID),
+    GOOGLE_PAID_USERS_TAB: process.env.GOOGLE_PAID_USERS_TAB ?? "Paid Users",
+    GOOGLE_LEADS_TAB: process.env.GOOGLE_LEADS_TAB ?? "Leads",
+    PAID_USERS_SHEET_SYNC:
+      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY &&
+      process.env.GOOGLE_PAID_USERS_SHEET_ID
+        ? "SET"
+        : "MISSING",
     GOOGLE_IMPERSONATE_EMAIL: process.env.GOOGLE_IMPERSONATE_EMAIL ?? "MISSING",
     GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID ?? "primary",
+    RESEND_API_KEY: presence(process.env.RESEND_API_KEY),
+    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL ?? "MISSING",
     INSTAGRAM_ACCESS_TOKEN: presence(process.env.INSTAGRAM_ACCESS_TOKEN),
     INSTAGRAM_PAGE_ID: presence(process.env.INSTAGRAM_PAGE_ID),
     INSTAGRAM_VERIFY_TOKEN: presence(process.env.INSTAGRAM_VERIFY_TOKEN),
