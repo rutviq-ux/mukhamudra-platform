@@ -20,10 +20,10 @@ export {
   addAttendee,
   removeAttendee,
 } from "./calendar";
+export { parsePhoneForSheet } from "./phone";
 export {
   PAID_USER_SHEET_HEADERS,
   LEAD_SHEET_HEADERS,
-  parsePhoneForSheet,
   ensurePaidUsersTab,
   upsertPaidUserRow,
   ensureLeadsTab,

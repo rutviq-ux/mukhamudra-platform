@@ -1,6 +1,10 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { Prisma, prisma, UserRole } from "@ru/db";
 import { redirect } from "next/navigation";
+import {
+  isPhoneUniqueViolation,
+  normalizeStoredPhone,
+} from "@/lib/user-phone";
 
 function isUniqueConstraintError(
   error: unknown,
@@ -16,12 +20,13 @@ export async function getCurrentUser() {
   if (!user) return null;
 
   const email = user.emailAddresses[0]?.emailAddress || "";
+  const clerkPhone = normalizeStoredPhone(user.phoneNumbers[0]?.phoneNumber);
   const baseUserData = {
     clerkId: user.id,
     email,
     name: user.fullName || user.firstName || undefined,
     avatarUrl: user.imageUrl || undefined,
-    phone: user.phoneNumbers[0]?.phoneNumber || undefined,
+    ...(clerkPhone ? { phone: clerkPhone } : {}),
   };
 
   // Try to find user by Clerk ID first
@@ -37,19 +42,34 @@ export async function getCurrentUser() {
 
     // If we found a user by email, link it to this Clerk account
     if (dbUser) {
-      dbUser = await prisma.user.update({
-        where: { id: dbUser.id },
-        data: {
-          clerkId: user.id,
-          name: dbUser.name || user.fullName || user.firstName || undefined,
-          avatarUrl: user.imageUrl || undefined,
-          phone: dbUser.phone || user.phoneNumbers[0]?.phoneNumber || undefined,
-        },
-      });
+      const linkedPhone = normalizeStoredPhone(dbUser.phone) ?? clerkPhone ?? null;
+      try {
+        dbUser = await prisma.user.update({
+          where: { id: dbUser.id },
+          data: {
+            clerkId: user.id,
+            name: dbUser.name || user.fullName || user.firstName || undefined,
+            avatarUrl: user.imageUrl || undefined,
+            phone: linkedPhone,
+          },
+        });
+      } catch (error) {
+        if (!isPhoneUniqueViolation(error)) {
+          throw error;
+        }
+        dbUser = await prisma.user.update({
+          where: { id: dbUser.id },
+          data: {
+            clerkId: user.id,
+            name: dbUser.name || user.fullName || user.firstName || undefined,
+            avatarUrl: user.imageUrl || undefined,
+            phone: normalizeStoredPhone(dbUser.phone),
+          },
+        });
+      }
     }
   }
 
-  // If still no user found, create a new one
   if (!dbUser) {
     try {
       dbUser = await prisma.user.create({
@@ -60,11 +80,26 @@ export async function getCurrentUser() {
         throw error;
       }
 
-      dbUser = await prisma.user.findFirst({
-        where: {
-          OR: [{ clerkId: user.id }, ...(email ? [{ email }] : [])],
-        },
-      });
+      if (isPhoneUniqueViolation(error) && clerkPhone) {
+        try {
+          const { phone: _ignored, ...withoutPhone } = baseUserData;
+          dbUser = await prisma.user.create({
+            data: withoutPhone,
+          });
+        } catch (retryError) {
+          if (!isUniqueConstraintError(retryError)) {
+            throw retryError;
+          }
+        }
+      }
+
+      if (!dbUser) {
+        dbUser = await prisma.user.findFirst({
+          where: {
+            OR: [{ clerkId: user.id }, ...(email ? [{ email }] : [])],
+          },
+        });
+      }
 
       if (!dbUser) {
         throw error;
@@ -77,7 +112,7 @@ export async function getCurrentUser() {
             clerkId: user.id,
             name: dbUser.name || baseUserData.name,
             avatarUrl: baseUserData.avatarUrl,
-            phone: dbUser.phone || baseUserData.phone,
+            phone: normalizeStoredPhone(dbUser.phone),
           },
         });
       }

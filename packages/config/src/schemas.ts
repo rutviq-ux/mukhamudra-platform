@@ -56,9 +56,25 @@ export const userUpdateSchema = z.object({
     .optional(),
   phone: z
     .string()
-    .regex(/^\+?[1-9]\d{6,14}$/, "Invalid phone number format")
+    .max(20)
     .optional()
-    .nullable(),
+    .nullable()
+    .transform((val, ctx) => {
+      if (val === undefined) return undefined;
+      if (val === null) return null;
+      const compact = val.replace(/[\s\-()]/g, "").trim();
+      if (!compact || /^(null|undefined|n\/a|na|-)$/i.test(compact)) {
+        return null;
+      }
+      if (!/^\+?[1-9]\d{6,14}$/.test(compact)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid phone number format",
+        });
+        return z.NEVER;
+      }
+      return compact;
+    }),
   goal: z.enum(["face-yoga", "pranayama", "both"]).optional(),
   whatsappOptIn: z.boolean().optional(),
   marketingOptIn: z.boolean().optional(),

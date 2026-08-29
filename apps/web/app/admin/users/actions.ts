@@ -7,6 +7,8 @@ import { adminCreateUserSchema, adminUpdateUserSchema } from "@ru/config";
 import { createAdminAction } from "@/lib/actions/safe-action";
 import { clerkClient } from "@clerk/nextjs/server";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
+import { normalizeStoredPhone } from "@/lib/user-phone";
+import { findConflictingPhoneUserId } from "@/lib/user-phone-db";
 
 /* ─── Create User ─── */
 export const createUser = createAdminAction("createUser", {
@@ -23,6 +25,14 @@ export const createUser = createAdminAction("createUser", {
   },
   handler: async ({ data }) => {
     const { email, name, phone, password, role } = data;
+
+    const nextPhone = normalizeStoredPhone(phone);
+    if (nextPhone) {
+      const conflictId = await findConflictingPhoneUserId(nextPhone);
+      if (conflictId) {
+        throw new Error("This phone number is already in use");
+      }
+    }
 
     const existing = await prisma.user.findUnique({
       where: { email: email.trim() },
@@ -55,7 +65,7 @@ export const createUser = createAdminAction("createUser", {
           clerkId: clerkUser.id,
           email: email.trim(),
           name: name?.trim() || null,
-          phone: phone?.trim() || null,
+          phone: nextPhone,
           role: role ?? "USER",
         },
         select: {
@@ -136,7 +146,14 @@ export const updateUser = createAdminAction("updateUser", {
     }
 
     if (phone !== undefined) {
-      dbUpdates.phone = phone?.trim() || null;
+      const nextPhone = normalizeStoredPhone(phone);
+      if (nextPhone) {
+        const conflictId = await findConflictingPhoneUserId(nextPhone, id);
+        if (conflictId) {
+          throw new Error("This phone number is already in use");
+        }
+      }
+      dbUpdates.phone = nextPhone;
     }
 
     if (marketingOptIn !== undefined) {

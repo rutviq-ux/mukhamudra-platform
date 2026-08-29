@@ -144,9 +144,8 @@ export function OnboardingForm({
     setError(null);
 
     // Combine country code + local number
-    const fullPhone = formData.localPhone
-      ? `${countryCode}${formData.localPhone.replace(/^0+/, "")}`
-      : undefined;
+    const localDigits = formData.localPhone.replace(/\D/g, "").replace(/^0+/, "");
+    const fullPhone = localDigits ? `${countryCode}${localDigits}` : null;
 
     startTransition(async () => {
       const result = await updateUserProfile({

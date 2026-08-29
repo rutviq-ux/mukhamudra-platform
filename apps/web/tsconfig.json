@@ -12,7 +12,8 @@
       "@ru/config": ["../../packages/config/src"],
       "@ru/ghost-client": ["../../packages/ghost-client/src"],
       "@ru/listmonk-client": ["../../packages/listmonk-client/src"],
-      "@ru/notifications": ["../../packages/notifications/src"]
+      "@ru/notifications": ["../../packages/notifications/src"],
+      "@ru/google-workspace/phone": ["../../packages/google-workspace/src/phone.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
