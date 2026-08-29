@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { Prisma, prisma } from "@ru/db";
 import { createLogger, getServerEnv } from "@ru/config";
+import {
+  isPhoneUniqueViolation,
+  normalizeStoredPhone,
+} from "@/lib/user-phone";
 import { getPostHogServer } from "@/lib/posthog-server";
 import {
   ResendEmailProvider,
@@ -183,40 +187,69 @@ async function handleUserSync(data: ClerkUserEvent["data"], eventType: string) {
   const email = data.email_addresses[0]?.email_address || "";
   const fullName =
     [data.first_name, data.last_name].filter(Boolean).join(" ") || undefined;
-  const phone = data.phone_numbers[0]?.phone_number || undefined;
+  const phone = normalizeStoredPhone(data.phone_numbers[0]?.phone_number);
 
-  // Try to find existing user by clerkId
   let dbUser = await prisma.user.findUnique({
     where: { clerkId: data.id },
   });
 
-  if (dbUser) {
-    // Update existing user
-    await prisma.user.update({
-      where: { id: dbUser.id },
-      data: {
-        email,
-        name: dbUser.name || fullName,
-        avatarUrl: data.image_url || undefined,
-        phone: dbUser.phone || phone,
-      },
-    });
-  } else {
-    // Try to find by email (pre-seeded user)
-    dbUser = email ? await prisma.user.findUnique({ where: { email } }) : null;
+  const applyPhone = (existing: string | null) =>
+    normalizeStoredPhone(existing) ?? phone;
 
-    if (dbUser) {
+  if (dbUser) {
+    try {
       await prisma.user.update({
         where: { id: dbUser.id },
         data: {
-          clerkId: data.id,
+          email,
           name: dbUser.name || fullName,
           avatarUrl: data.image_url || undefined,
-          phone: dbUser.phone || phone,
+          phone: applyPhone(dbUser.phone),
         },
       });
+    } catch (error) {
+      if (!isPhoneUniqueViolation(error)) {
+        throw error;
+      }
+      await prisma.user.update({
+        where: { id: dbUser.id },
+        data: {
+          email,
+          name: dbUser.name || fullName,
+          avatarUrl: data.image_url || undefined,
+          phone: normalizeStoredPhone(dbUser.phone),
+        },
+      });
+    }
+  } else {
+    dbUser = email ? await prisma.user.findUnique({ where: { email } }) : null;
+
+    if (dbUser) {
+      try {
+        await prisma.user.update({
+          where: { id: dbUser.id },
+          data: {
+            clerkId: data.id,
+            name: dbUser.name || fullName,
+            avatarUrl: data.image_url || undefined,
+            phone: applyPhone(dbUser.phone),
+          },
+        });
+      } catch (error) {
+        if (!isPhoneUniqueViolation(error)) {
+          throw error;
+        }
+        await prisma.user.update({
+          where: { id: dbUser.id },
+          data: {
+            clerkId: data.id,
+            name: dbUser.name || fullName,
+            avatarUrl: data.image_url || undefined,
+            phone: normalizeStoredPhone(dbUser.phone),
+          },
+        });
+      }
     } else {
-      // Create new user
       try {
         await prisma.user.create({
           data: {
@@ -224,15 +257,36 @@ async function handleUserSync(data: ClerkUserEvent["data"], eventType: string) {
             email,
             name: fullName,
             avatarUrl: data.image_url || undefined,
-            phone,
+            ...(phone ? { phone } : {}),
           },
         });
       } catch (error) {
-        // Handle race condition with lazy creation in getCurrentUser
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === "P2002"
         ) {
+          if (isPhoneUniqueViolation(error) && phone) {
+            try {
+              await prisma.user.create({
+                data: {
+                  clerkId: data.id,
+                  email,
+                  name: fullName,
+                  avatarUrl: data.image_url || undefined,
+                },
+              });
+            } catch (retryError) {
+              if (
+                !(
+                  retryError instanceof Prisma.PrismaClientKnownRequestError &&
+                  retryError.code === "P2002"
+                )
+              ) {
+                throw retryError;
+              }
+            }
+          }
+
           log.info(
             { clerkId: data.id },
             "User already exists (race condition) — linking",

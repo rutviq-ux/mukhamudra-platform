@@ -1,12 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma, prisma } from "@ru/db";
+import { prisma } from "@ru/db";
 import { userUpdateSchema, createLogger } from "@ru/config";
 import { notifyWelcome, emitSequenceEvent } from "@ru/notifications";
 import { createAuthAction } from "@/lib/actions/safe-action";
 import { getPostHogServer } from "@/lib/posthog-server";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
+import {
+  isPhoneUniqueViolation,
+  isValidStoredPhone,
+  normalizeStoredPhone,
+} from "@/lib/user-phone";
+import { findConflictingPhoneUserId } from "@/lib/user-phone-db";
 
 const log = createLogger("action:updateUserProfile");
 
@@ -24,8 +30,19 @@ export const updateUserProfile = createAuthAction("updateUserProfile", {
       termsAccepted,
     } = data;
 
-    // Clear whatsappOptIn if user opted in but has no phone number
-    const effectivePhone = phone !== undefined ? phone : user.phone;
+    const nextPhone =
+      phone !== undefined ? normalizeStoredPhone(phone) : undefined;
+    if (nextPhone && !isValidStoredPhone(nextPhone)) {
+      throw new Error("Invalid phone number format");
+    }
+    if (nextPhone) {
+      const conflictId = await findConflictingPhoneUserId(nextPhone, user.id);
+      if (conflictId) {
+        throw new Error("This phone number is already in use");
+      }
+    }
+
+    const effectivePhone = nextPhone !== undefined ? nextPhone : user.phone;
     const effectiveWhatsappOptIn =
       whatsappOptIn !== undefined
         ? !effectivePhone
@@ -33,7 +50,6 @@ export const updateUserProfile = createAuthAction("updateUserProfile", {
           : whatsappOptIn
         : undefined;
 
-    // Check if this is the first onboarding completion
     const isOnboarding = goal !== undefined && !user.onboardedAt;
 
     let updatedUser;
@@ -42,7 +58,7 @@ export const updateUserProfile = createAuthAction("updateUserProfile", {
         where: { id: user.id },
         data: {
           name: name !== undefined ? name : undefined,
-          phone: phone !== undefined ? phone : undefined,
+          phone: nextPhone !== undefined ? nextPhone : undefined,
           goal: goal !== undefined ? goal : undefined,
           whatsappOptIn: effectiveWhatsappOptIn,
           marketingOptIn:
@@ -54,14 +70,8 @@ export const updateUserProfile = createAuthAction("updateUserProfile", {
         },
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        const target = (error.meta?.target as string[]) || [];
-        if (target.includes("phone")) {
-          throw new Error("This phone number is already in use");
-        }
+      if (isPhoneUniqueViolation(error)) {
+        throw new Error("This phone number is already in use");
       }
       throw error;
     }
@@ -100,7 +110,7 @@ export const updateUserProfile = createAuthAction("updateUserProfile", {
 
     revalidatePath("/app");
 
-    if (phone !== undefined && updatedUser.phone) {
+    if (nextPhone && updatedUser.phone) {
       syncPaidUserToSheet(updatedUser.id).catch((err) =>
         log.error({ err, userId: updatedUser.id }, "Failed to sync paid-user sheet"),
       );

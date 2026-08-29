@@ -29,6 +29,10 @@ export default defineConfig({
       "@ru/listmonk-client": path.resolve(__dirname, "packages/listmonk-client/src"),
       "@ru/notifications": path.resolve(__dirname, "packages/notifications/src"),
       "@ru/google-workspace": path.resolve(__dirname, "packages/google-workspace/src"),
+      "@ru/google-workspace/phone": path.resolve(
+        __dirname,
+        "packages/google-workspace/src/phone.ts",
+      ),
     },
   },
 });
