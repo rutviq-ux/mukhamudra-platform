@@ -309,7 +309,7 @@ export async function sendSessionReminders(): Promise<number> {
           user: { select: { id: true, name: true } },
         },
       },
-      batch: { select: { name: true } },
+      batch: { select: { name: true, meetingLink: true } },
       product: { select: { type: true } },
     },
   });
@@ -321,6 +321,12 @@ export async function sendSessionReminders(): Promise<number> {
   for (const session of sessions) {
     const sessionType = session.batch?.name || session.title || "Yoga";
     const joinLink = `${appUrl}/app/join/${session.id}`;
+    const uniqueMeet =
+      session.joinUrl && session.joinUrl !== session.batch?.meetingLink
+        ? session.joinUrl
+        : "";
+    const meetingLink =
+      uniqueMeet || "Available from your dashboard when class opens.";
     const dashboardUrl = `${appUrl}/app`;
 
     const recipientSelect = {
@@ -381,6 +387,7 @@ export async function sendSessionReminders(): Promise<number> {
             name,
             session_type: sessionType,
             join_link: joinLink,
+            meeting_link: meetingLink,
           },
         }),
         queueNotification({
