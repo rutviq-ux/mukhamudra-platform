@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/send-whatsapp",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/payment-health",
+      "schedule": "0 3 * * 1"
     }
   ]
 }

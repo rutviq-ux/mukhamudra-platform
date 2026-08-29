@@ -568,6 +568,27 @@ export async function notifySubscriptionExpiringSoon(opts: {
   });
 }
 
+export async function notifyPaymentHealthWeekly(opts: {
+  userId: string;
+  failedCount: string;
+  failedAmount: string;
+  pendingCount: string;
+  paidCount: string;
+  details: string;
+}): Promise<void> {
+  await queueNotification({
+    userId: opts.userId,
+    templateName: "payment_health_weekly_email",
+    variables: {
+      failed_count: opts.failedCount,
+      failed_amount: opts.failedAmount,
+      pending_count: opts.pendingCount,
+      paid_count: opts.paidCount,
+      details: opts.details,
+    },
+  });
+}
+
 /**
  * Notify user of WhatsApp opt-out confirmation.
  */

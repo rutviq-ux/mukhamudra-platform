@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@ru/ui";
 import { UserPlus } from "lucide-react";
+import { SheetSyncButton } from "./sheet-sync-button";
 import {
   groupLeadsByPhone,
   leadPhoneKey,
@@ -109,7 +110,10 @@ export default async function AdminLeadsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl md:text-3xl font-light mb-8">Leads</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <h1 className="text-2xl md:text-3xl font-light">Leads</h1>
+        <SheetSyncButton />
+      </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-8">
         <Card glass>

@@ -9,6 +9,7 @@ import {
   leadPhoneVariants,
   normalizeLeadPhone,
 } from "@/lib/leads";
+import { syncLeadToSheet } from "@/lib/sync-lead-sheet";
 
 const log = createLogger("action:submitLead");
 
@@ -59,6 +60,10 @@ export const submitLead = createPublicAction("submitLead", {
 
     emitSequenceEvent("lead.created", { leadId: lead.id }).catch((err) =>
       log.error({ err }, "Failed to emit lead.created sequence event"),
+    );
+
+    syncLeadToSheet(lead.id).catch((err) =>
+      log.error({ err }, "Failed to sync lead to Google Sheet"),
     );
 
     return { id: lead.id };
