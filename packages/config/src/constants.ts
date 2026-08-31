@@ -105,6 +105,7 @@ export const CONFIG = {
   // Join window (minutes before/after session start)
   JOIN_WINDOW_BEFORE_MIN: 15,
   JOIN_WINDOW_AFTER_MIN: 30,
+  MEET_GENERATE_BEFORE_MIN: 25,
 
   // Session generation
   SESSION_GENERATION_DAYS: 30,

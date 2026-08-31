@@ -28,7 +28,7 @@ export const createTemplate = createAdminAction("createTemplate", {
     }),
   },
   handler: async ({ data }) => {
-    const { name, channel, subject, body, variables, isActive } = data;
+    const { name, channel, subject, body, variables, isActive, isTransactional } = data;
 
     const existing = await prisma.messageTemplate.findUnique({
       where: { name },
@@ -38,7 +38,7 @@ export const createTemplate = createAdminAction("createTemplate", {
     }
 
     const template = await prisma.messageTemplate.create({
-      data: { name, channel, subject, body, variables, isActive },
+      data: { name, channel, subject, body, variables, isActive, isTransactional },
     });
 
     revalidatePath("/admin/messages");
@@ -58,7 +58,7 @@ export const updateTemplate = createAdminAction("updateTemplate", {
     }),
   },
   handler: async ({ data }) => {
-    const { id, name, channel, subject, body, variables, isActive } = data;
+    const { id, name, channel, subject, body, variables, isActive, isTransactional } = data;
 
     const existing = await prisma.messageTemplate.findUnique({
       where: { id },
@@ -78,7 +78,7 @@ export const updateTemplate = createAdminAction("updateTemplate", {
 
     const template = await prisma.messageTemplate.update({
       where: { id },
-      data: { name, channel, subject, body, variables, isActive },
+      data: { name, channel, subject, body, variables, isActive, isTransactional },
     });
 
     revalidatePath("/admin/messages");

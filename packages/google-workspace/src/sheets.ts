@@ -15,6 +15,7 @@ export const PAID_USER_SHEET_HEADERS = [
   "Period End",
   "Status",
   "User Id",
+  "Join URL",
 ] as const;
 
 export type PaidUserSheetStatus = "ACTIVE" | "CANCELLED" | "EXPIRED";
@@ -52,6 +53,8 @@ function columnLetter(index: number): string {
 const PHONE_COL = PAID_USER_SHEET_HEADERS.indexOf("Phone");
 const EMAIL_COL = PAID_USER_SHEET_HEADERS.indexOf("Email");
 const USER_ID_COL = PAID_USER_SHEET_HEADERS.indexOf("User Id");
+const JOIN_URL_COL = PAID_USER_SHEET_HEADERS.indexOf("Join URL");
+const DATA_LAST_COL = columnLetter(USER_ID_COL);
 const LAST_COL = columnLetter(PAID_USER_SHEET_HEADERS.length - 1);
 
 function rowToValues(row: PaidUserSheetRow): string[] {
@@ -188,7 +191,7 @@ export async function upsertPaidUserRow(
   options?: { allowCreate?: boolean },
 ): Promise<UpsertPaidUserRowResult> {
   const allowCreate = options?.allowCreate ?? true;
-  const range = `${tabName}!A:${LAST_COL}`;
+  const range = `${tabName}!A:${DATA_LAST_COL}`;
   const response = await withRetry(() =>
     sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -204,7 +207,7 @@ export async function upsertPaidUserRow(
     await withRetry(() =>
       sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `${tabName}!A${matchRowNumber}:${LAST_COL}${matchRowNumber}`,
+        range: `${tabName}!A${matchRowNumber}:${DATA_LAST_COL}${matchRowNumber}`,
         valueInputOption: "RAW",
         requestBody: { values },
       }),
@@ -219,7 +222,7 @@ export async function upsertPaidUserRow(
   const appendResponse = await withRetry(() =>
     sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${tabName}!A:${LAST_COL}`,
+      range: `${tabName}!A:${DATA_LAST_COL}`,
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values },
@@ -233,6 +236,57 @@ export async function upsertPaidUserRow(
     : rows.length + 1;
 
   return { action: "created", rowNumber };
+}
+
+export async function updatePaidUserJoinUrls(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  tabName: string,
+  userIds: string[],
+  joinUrl: string,
+): Promise<{ updated: number }> {
+  const uniqueIds = [...new Set(userIds.filter(Boolean))];
+  if (uniqueIds.length === 0 || !joinUrl.trim()) {
+    return { updated: 0 };
+  }
+
+  const idSet = new Set(uniqueIds);
+  const range = `${tabName}!A:${LAST_COL}`;
+  const response = await withRetry(() =>
+    sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+    }),
+  );
+
+  const rows = (response.data.values ?? []) as string[][];
+  const joinColLetter = columnLetter(JOIN_URL_COL);
+  const data: { range: string; values: string[][] }[] = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const existingUserId = normalizeCell((rows[i] ?? [])[USER_ID_COL]);
+    if (!existingUserId || !idSet.has(existingUserId)) continue;
+    data.push({
+      range: `${tabName}!${joinColLetter}${i + 1}`,
+      values: [[joinUrl]],
+    });
+  }
+
+  if (data.length === 0) {
+    return { updated: 0 };
+  }
+
+  await withRetry(() =>
+    sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: "RAW",
+        data,
+      },
+    }),
+  );
+
+  return { updated: data.length };
 }
 
 export const LEAD_SHEET_HEADERS = [

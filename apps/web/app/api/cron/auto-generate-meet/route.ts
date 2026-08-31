@@ -14,6 +14,7 @@ import {
   generateMeetingTitle,
   generateMeetingDescription,
 } from "@/lib/meet-helpers";
+import { syncSessionJoinUrlToSheet } from "@/lib/sync-session-join-url";
 
 const log = createLogger("cron:auto-generate-meet");
 
@@ -32,7 +33,7 @@ async function handler(request: NextRequest) {
 
     const now = new Date();
     const config = await getConfig();
-    const generateBeforeMin = config.JOIN_WINDOW_BEFORE_MIN + 5;
+    const generateBeforeMin = config.MEET_GENERATE_BEFORE_MIN;
     const generateBefore = new Date(now.getTime() + generateBeforeMin * 60 * 1000);
 
     const sessions = await prisma.session.findMany({
@@ -43,7 +44,7 @@ async function handler(request: NextRequest) {
         endsAt: { gt: now },
       },
       include: {
-        product: { select: { name: true } },
+        product: { select: { name: true, type: true } },
       },
       take: 20,
       orderBy: { startsAt: "asc" },
@@ -104,6 +105,12 @@ async function handler(request: NextRequest) {
 
         generated++;
         log.info({ sessionId: session.id }, "Auto-generated Meet link");
+        syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch((err) =>
+          log.warn(
+            { err, sessionId: session.id },
+            "Failed to write Join URL to paid-users sheet",
+          ),
+        );
       } catch (error) {
         log.error(
           { err: error, sessionId: session.id },

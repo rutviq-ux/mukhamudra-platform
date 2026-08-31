@@ -17,6 +17,7 @@ describe("PAID_USER_SHEET_HEADERS", () => {
       "Period End",
       "Status",
       "User Id",
+      "Join URL",
     ]);
   });
 });

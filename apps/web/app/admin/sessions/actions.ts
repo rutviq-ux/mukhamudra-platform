@@ -17,6 +17,7 @@ import {
   generateMeetingDescription,
 } from "@/lib/meet-helpers";
 import { isReusedBatchMeetLink } from "@/lib/sessions";
+import { syncSessionJoinUrlToSheet } from "@/lib/sync-session-join-url";
 
 // ---------- updateSession ----------
 
@@ -115,7 +116,7 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
     const session = await prisma.session.findUnique({
       where: { id: data.id },
       include: {
-        product: { select: { name: true } },
+        product: { select: { name: true, type: true } },
         batch: { select: { meetingLink: true } },
         bookings: {
           where: { status: "CONFIRMED" },
@@ -196,6 +197,7 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
     }
 
     revalidatePath("/admin/sessions");
+    syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch(() => {});
     return {
       meetLink: meetResult.meetLink,
       calendarEventId: meetResult.calendarEventId,

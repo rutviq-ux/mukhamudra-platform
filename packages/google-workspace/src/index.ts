@@ -26,6 +26,7 @@ export {
   LEAD_SHEET_HEADERS,
   ensurePaidUsersTab,
   upsertPaidUserRow,
+  updatePaidUserJoinUrls,
   ensureLeadsTab,
   upsertLeadRow,
   createSheetsClient,
