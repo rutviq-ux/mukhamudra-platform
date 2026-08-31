@@ -8,8 +8,8 @@ import { createAdminAction } from "@/lib/actions/safe-action";
 import { getGoogleConfig } from "@/lib/google-config";
 import {
   createMeetingWithAttendees,
-  resolveSpaceName,
-  setSpaceAccessType,
+  waitForMeetSpaceName,
+  configureMeetSpace,
   findRecording,
 } from "@ru/google-workspace";
 import {
@@ -17,7 +17,10 @@ import {
   generateMeetingDescription,
 } from "@/lib/meet-helpers";
 import { isReusedBatchMeetLink } from "@/lib/sessions";
-import { syncSessionJoinUrlToSheet } from "@/lib/sync-session-join-url";
+import {
+  getSessionMeetAttendeeEmails,
+  syncSessionJoinUrlToSheet,
+} from "@/lib/sync-session-join-url";
 
 // ---------- updateSession ----------
 
@@ -59,11 +62,8 @@ export const getMeetPreview = createAdminAction("getMeetPreview", {
     const session = await prisma.session.findUnique({
       where: { id: data.id },
       include: {
-        product: { select: { name: true } },
-        bookings: {
-          where: { status: "CONFIRMED" },
-          select: { user: { select: { email: true } } },
-        },
+        product: { select: { name: true, type: true } },
+        coach: { select: { email: true } },
       },
     });
 
@@ -86,7 +86,7 @@ export const getMeetPreview = createAdminAction("getMeetPreview", {
       session.product.name,
       session.modalities,
     );
-    const attendees = session.bookings.map((b) => b.user.email);
+    const attendees = await getSessionMeetAttendeeEmails(session);
 
     revalidatePath("/admin/sessions");
     return { title, description, attendees };
@@ -118,10 +118,7 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
       include: {
         product: { select: { name: true, type: true } },
         batch: { select: { meetingLink: true } },
-        bookings: {
-          where: { status: "CONFIRMED" },
-          select: { user: { select: { email: true } } },
-        },
+        coach: { select: { email: true } },
       },
     });
 
@@ -160,7 +157,7 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
         session.modalities,
       );
     const attendeeEmails =
-      data.attendees || session.bookings.map((b) => b.user.email);
+      data.attendees ?? (await getSessionMeetAttendeeEmails(session));
 
     const meetResult = await createMeetingWithAttendees(googleConfig, {
       title,
@@ -170,15 +167,19 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
       attendeeEmails,
     });
 
-    // Best-effort: resolve space name from meeting code for recordings + TRUSTED access
     let spaceName: string | null = null;
     try {
-      spaceName = await resolveSpaceName(googleConfig, meetResult.meetingId);
+      spaceName = await waitForMeetSpaceName(googleConfig, meetResult.meetingId);
     } catch {
-      // Space not ready yet — will be resolved later by fetch-recordings cron
     }
 
-    // Store results on session
+    if (spaceName) {
+      try {
+        await configureMeetSpace(googleConfig, spaceName);
+      } catch {
+      }
+    }
+
     await prisma.session.update({
       where: { id: data.id },
       data: {
@@ -188,13 +189,6 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
         spaceName,
       },
     });
-
-    // Best-effort: set space access type to TRUSTED
-    if (spaceName) {
-      setSpaceAccessType(googleConfig, spaceName, "TRUSTED").catch(() => {
-        // Swallow — non-critical
-      });
-    }
 
     revalidatePath("/admin/sessions");
     syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch(() => {});

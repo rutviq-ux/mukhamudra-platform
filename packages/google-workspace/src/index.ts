@@ -14,10 +14,19 @@ export type {
   UpsertPaidUserRowResult,
   LeadSheetRow,
 } from "./sheets";
-export { createMeetSpace, findRecording, listConferenceParticipants, resolveSpaceName, setSpaceAccessType } from "./meet";
+export {
+  createMeetSpace,
+  findRecording,
+  listConferenceParticipants,
+  resolveSpaceName,
+  waitForMeetSpaceName,
+  setSpaceAccessType,
+  configureMeetSpace,
+} from "./meet";
 export {
   createMeetingWithAttendees,
   addAttendee,
+  addAttendees,
   removeAttendee,
 } from "./calendar";
 export { parsePhoneForSheet } from "./phone";
