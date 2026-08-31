@@ -22,6 +22,7 @@ export {
   waitForMeetSpaceName,
   setSpaceAccessType,
   configureMeetSpace,
+  createConfiguredMeetSpace,
 } from "./meet";
 export {
   createMeetingWithAttendees,
@@ -29,6 +30,12 @@ export {
   addAttendees,
   removeAttendee,
 } from "./calendar";
+export {
+  ensureGroup,
+  addGroupMember,
+  removeGroupMember,
+  listGroupMemberEmails,
+} from "./groups";
 export { parsePhoneForSheet } from "./phone";
 export {
   PAID_USER_SHEET_HEADERS,

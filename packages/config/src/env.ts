@@ -48,6 +48,8 @@ const serverEnvSchema = z.object({
   GOOGLE_PAID_USERS_SHEET_ID: z.string().min(1).optional(),
   GOOGLE_PAID_USERS_TAB: z.string().min(1).optional().default("Paid Users"),
   GOOGLE_LEADS_TAB: z.string().min(1).optional().default("Leads"),
+  GOOGLE_MEET_GROUP_FACE_YOGA: z.string().email().optional(),
+  GOOGLE_MEET_GROUP_PRANAYAMA: z.string().email().optional(),
 
   // Instagram (Meta Graph API — optional)
   INSTAGRAM_ACCESS_TOKEN: z.string().min(1).optional(),

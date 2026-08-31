@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@ru/ui";
 import { toast } from "@/hooks/use-toast";
-import { Video, Film, ExternalLink, Loader2, Plus, X as XIcon } from "lucide-react";
+import { Video, Film, ExternalLink, Loader2 } from "lucide-react";
 import {
   updateSession,
   getMeetPreview,
@@ -68,7 +68,6 @@ export function SessionTable({ sessions, batches, coaches }: SessionTableProps) 
     attendees: string[];
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [newAttendeeEmail, setNewAttendeeEmail] = useState("");
   const [creating, setCreating] = useState(false);
 
   const filtered = filterBatch
@@ -186,7 +185,6 @@ export function SessionTable({ sessions, batches, coaches }: SessionTableProps) 
         id: previewSession,
         title: previewData.title,
         description: previewData.description,
-        attendees: previewData.attendees,
       });
       if (!result.success) {
         toast({
@@ -209,28 +207,6 @@ export function SessionTable({ sessions, batches, coaches }: SessionTableProps) 
     } finally {
       setCreating(false);
     }
-  }
-
-  function addPreviewAttendee() {
-    if (!newAttendeeEmail || !previewData) return;
-    const email = newAttendeeEmail.trim().toLowerCase();
-    if (!email || previewData.attendees.includes(email)) {
-      setNewAttendeeEmail("");
-      return;
-    }
-    setPreviewData({
-      ...previewData,
-      attendees: [...previewData.attendees, email],
-    });
-    setNewAttendeeEmail("");
-  }
-
-  function removePreviewAttendee(email: string) {
-    if (!previewData) return;
-    setPreviewData({
-      ...previewData,
-      attendees: previewData.attendees.filter((a) => a !== email),
-    });
   }
 
   function formatDate(dateStr: string, tz?: string) {
@@ -438,7 +414,6 @@ export function SessionTable({ sessions, batches, coaches }: SessionTableProps) 
           if (!open) {
             setPreviewSession(null);
             setPreviewData(null);
-            setNewAttendeeEmail("");
           }
         }}
       >
@@ -446,7 +421,9 @@ export function SessionTable({ sessions, batches, coaches }: SessionTableProps) 
           <DialogHeader>
             <DialogTitle>Generate Meet Link</DialogTitle>
             <DialogDescription>
-              Review and edit meeting details before creating.
+              Anyone with the class group invite can join without knocking when
+              signed in with that Google account. Recording starts when the host
+              joins.
             </DialogDescription>
           </DialogHeader>
 
@@ -485,48 +462,11 @@ export function SessionTable({ sessions, batches, coaches }: SessionTableProps) 
               </div>
 
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                  Attendees ({previewData.attendees.length})
-                </label>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {previewData.attendees.map((email) => (
-                    <div
-                      key={email}
-                      className="flex items-center justify-between text-xs bg-muted/30 rounded px-2 py-1"
-                    >
-                      <span className="truncate">{email}</span>
-                      <button
-                        onClick={() => removePreviewAttendee(email)}
-                        className="ml-2 text-muted-foreground hover:text-destructive flex-shrink-0"
-                      >
-                        <XIcon className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <input
-                    type="email"
-                    placeholder="Add attendee email"
-                    value={newAttendeeEmail}
-                    onChange={(e) => setNewAttendeeEmail(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addPreviewAttendee();
-                      }
-                    }}
-                    className="flex-1 h-8 rounded-lg border border-border bg-background px-3 text-xs"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2"
-                    onClick={addPreviewAttendee}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  {previewData.attendees.length} members. The class Google Group
+                  is invited as one guest so Calendar limits are not exceeded.
+                  New members are added to that group automatically.
+                </p>
               </div>
             </div>
           ) : null}

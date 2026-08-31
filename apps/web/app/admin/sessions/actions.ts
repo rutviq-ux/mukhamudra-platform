@@ -6,12 +6,7 @@ import { prisma } from "@ru/db";
 import { sessionUpdateSchema } from "@ru/config";
 import { createAdminAction } from "@/lib/actions/safe-action";
 import { getGoogleConfig } from "@/lib/google-config";
-import {
-  createMeetingWithAttendees,
-  waitForMeetSpaceName,
-  configureMeetSpace,
-  findRecording,
-} from "@ru/google-workspace";
+import { findRecording } from "@ru/google-workspace";
 import {
   generateMeetingTitle,
   generateMeetingDescription,
@@ -21,6 +16,8 @@ import {
   getSessionMeetAttendeeEmails,
   syncSessionJoinUrlToSheet,
 } from "@/lib/sync-session-join-url";
+import { createSessionMeet } from "@/lib/create-session-meet";
+import { reconcileMeetGroups } from "@/lib/sync-meet-group";
 
 // ---------- updateSession ----------
 
@@ -109,7 +106,7 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
     getTargetId: (data) => data.id,
     getMetadata: (_data, result) => ({
       meetLink: result.meetLink,
-      calendarEventId: result.calendarEventId,
+      spaceName: result.spaceName,
     }),
   },
   handler: async ({ data, user }) => {
@@ -118,7 +115,6 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
       include: {
         product: { select: { name: true, type: true } },
         batch: { select: { meetingLink: true } },
-        coach: { select: { email: true } },
       },
     });
 
@@ -141,52 +137,18 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
       throw new Error("Google Workspace not configured");
     }
 
-    // Build title, description, attendees — use provided values or auto-generate
-    const title =
-      data.title ||
-      generateMeetingTitle(
-        session.product.name,
-        session.modalities,
-        session.startsAt,
-      );
-    const description =
-      data.description ||
-      generateMeetingDescription(
-        session,
-        session.product.name,
-        session.modalities,
-      );
-    const attendeeEmails =
-      data.attendees ?? (await getSessionMeetAttendeeEmails(session));
-
-    const meetResult = await createMeetingWithAttendees(googleConfig, {
-      title,
-      description,
-      startTime: session.startsAt,
-      endTime: session.endsAt,
-      attendeeEmails,
-    });
-
-    let spaceName: string | null = null;
-    try {
-      spaceName = await waitForMeetSpaceName(googleConfig, meetResult.meetingId);
-    } catch {
-    }
-
-    if (spaceName) {
-      try {
-        await configureMeetSpace(googleConfig, spaceName);
-      } catch {
-      }
-    }
+    await reconcileMeetGroups();
+    const meetResult = await createSessionMeet(googleConfig, session);
 
     await prisma.session.update({
       where: { id: data.id },
       data: {
         joinUrl: meetResult.meetLink,
-        calendarEventId: meetResult.calendarEventId,
         meetingId: meetResult.meetingId,
-        spaceName,
+        spaceName: meetResult.spaceName,
+        ...(meetResult.calendarEventId
+          ? { calendarEventId: meetResult.calendarEventId }
+          : {}),
       },
     });
 
@@ -194,7 +156,7 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
     syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch(() => {});
     return {
       meetLink: meetResult.meetLink,
-      calendarEventId: meetResult.calendarEventId,
+      spaceName: meetResult.spaceName,
     };
   },
 });

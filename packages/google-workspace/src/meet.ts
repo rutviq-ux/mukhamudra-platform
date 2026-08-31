@@ -162,6 +162,7 @@ export async function setSpaceAccessType(
 export async function configureMeetSpace(
   config: GoogleWorkspaceConfig,
   spaceName: string,
+  accessType: "OPEN" | "TRUSTED" = "OPEN",
 ): Promise<{ autoRecord: boolean }> {
   const auth = createAuthClient(config);
   const tokenResponse = await auth.getAccessToken();
@@ -192,7 +193,7 @@ export async function configureMeetSpace(
       "config.accessType,config.artifactConfig.recordingConfig.autoRecordingGeneration",
       {
         config: {
-          accessType: "TRUSTED",
+          accessType,
           artifactConfig: {
             recordingConfig: {
               autoRecordingGeneration: "ON",
@@ -203,9 +204,22 @@ export async function configureMeetSpace(
     );
     return { autoRecord: true };
   } catch {
-    await setSpaceAccessType(config, spaceName, "TRUSTED");
+    await setSpaceAccessType(config, spaceName, accessType);
     return { autoRecord: false };
   }
+}
+
+export async function createConfiguredMeetSpace(
+  config: GoogleWorkspaceConfig,
+): Promise<MeetSpaceResult & { autoRecord: boolean }> {
+  const space = await createMeetSpace(config);
+  let autoRecord = false;
+  try {
+    const configured = await configureMeetSpace(config, space.spaceName);
+    autoRecord = configured.autoRecord;
+  } catch {
+  }
+  return { ...space, autoRecord };
 }
 
 /**
