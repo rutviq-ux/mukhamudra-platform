@@ -8,6 +8,7 @@ import { saveConfig } from "@/lib/config";
 const numericKeys = [
   "JOIN_WINDOW_BEFORE_MIN",
   "JOIN_WINDOW_AFTER_MIN",
+  "MEET_GENERATE_BEFORE_MIN",
   "SESSION_GENERATION_DAYS",
   "WHATSAPP_RATE_LIMIT_PER_MINUTE",
   "WHATSAPP_RATE_LIMIT_PER_DAY",

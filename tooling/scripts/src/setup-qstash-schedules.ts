@@ -64,7 +64,7 @@ const SCHEDULES = [
   {
     path: "/api/cron/auto-generate-meet",
     cron: "* * * * *", // Every minute
-    comment: "Auto-generate unique Meet links for sessions starting within ~20 minutes",
+    comment: "Auto-generate unique Meet links 25 minutes before session start",
   },
   {
     path: "/api/cron/process-sequences",

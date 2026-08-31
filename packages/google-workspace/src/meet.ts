@@ -1,5 +1,5 @@
 import type { meet_v2 } from "googleapis";
-import { getMeetClient } from "./auth";
+import { createAuthClient, getMeetClient } from "./auth";
 import type {
   GoogleWorkspaceConfig,
   MeetSpaceResult,
@@ -93,16 +93,21 @@ export async function findRecording(
   };
 }
 
-/**
- * Look up the Meet space name from a meeting code.
- * Returns the space resource name (e.g., "spaces/abc123") or null if not found.
- * This is needed for Calendar-created meetings where the space name isn't returned directly.
- */
 export async function resolveSpaceName(
   config: GoogleWorkspaceConfig,
   meetingCode: string,
 ): Promise<string | null> {
   const meet = getMeetClient(config);
+
+  try {
+    const response = await meet.spaces.get({
+      name: `spaces/${meetingCode}`,
+    });
+    if (response.data.name) {
+      return response.data.name;
+    }
+  } catch {
+  }
 
   try {
     const response = await meet.conferenceRecords.list({
@@ -114,17 +119,30 @@ export async function resolveSpaceName(
       return null;
     }
 
-    // Extract space name from the conference record
     return records[0]!.space || null;
   } catch {
     return null;
   }
 }
 
-/**
- * Set the access type on a Meet space.
- * Use "TRUSTED" to allow org members and invited external users to join without knocking.
- */
+export async function waitForMeetSpaceName(
+  config: GoogleWorkspaceConfig,
+  meetingCode: string,
+  attempts = 4,
+  delayMs = 400,
+): Promise<string | null> {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const spaceName = await resolveSpaceName(config, meetingCode);
+    if (spaceName) {
+      return spaceName;
+    }
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  return null;
+}
+
 export async function setSpaceAccessType(
   config: GoogleWorkspaceConfig,
   spaceName: string,
@@ -139,6 +157,55 @@ export async function setSpaceAccessType(
       config: { accessType },
     },
   });
+}
+
+export async function configureMeetSpace(
+  config: GoogleWorkspaceConfig,
+  spaceName: string,
+): Promise<{ autoRecord: boolean }> {
+  const auth = createAuthClient(config);
+  const tokenResponse = await auth.getAccessToken();
+  const token = tokenResponse.token;
+  if (!token) {
+    throw new Error("Failed to get Google access token");
+  }
+
+  const patchSpace = async (updateMask: string, body: unknown) => {
+    const url = new URL(`https://meet.googleapis.com/v2/${spaceName}`);
+    url.searchParams.set("updateMask", updateMask);
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Meet space patch failed (${response.status}): ${details}`);
+    }
+  };
+
+  try {
+    await patchSpace(
+      "config.accessType,config.artifactConfig.recordingConfig.autoRecordingGeneration",
+      {
+        config: {
+          accessType: "TRUSTED",
+          artifactConfig: {
+            recordingConfig: {
+              autoRecordingGeneration: "ON",
+            },
+          },
+        },
+      },
+    );
+    return { autoRecord: true };
+  } catch {
+    await setSpaceAccessType(config, spaceName, "TRUSTED");
+    return { autoRecord: false };
+  }
 }
 
 /**

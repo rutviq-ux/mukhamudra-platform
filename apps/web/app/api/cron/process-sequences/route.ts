@@ -137,7 +137,7 @@ async function handler(request: NextRequest) {
       const channel = nextStep.template.channel;
       if (user) {
         if (channel === "WHATSAPP" && !user.whatsappOptIn) { skipped++; continue; }
-        if (channel === "EMAIL" && !user.marketingOptIn) { skipped++; continue; }
+        if (channel === "EMAIL" && !user.marketingOptIn && !nextStep.template.isTransactional) { skipped++; continue; }
         if (channel === "PUSH" && !user.pushOptIn) { skipped++; continue; }
       }
 

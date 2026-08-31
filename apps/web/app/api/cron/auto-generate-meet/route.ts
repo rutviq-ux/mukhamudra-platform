@@ -7,13 +7,17 @@ import { getConfig } from "@/lib/config";
 import { clearReusedBatchMeetingLinks } from "@/lib/clear-reused-meet-links";
 import {
   createMeetingWithAttendees,
-  resolveSpaceName,
-  setSpaceAccessType,
+  waitForMeetSpaceName,
+  configureMeetSpace,
 } from "@ru/google-workspace";
 import {
   generateMeetingTitle,
   generateMeetingDescription,
 } from "@/lib/meet-helpers";
+import {
+  getSessionMeetAttendeeEmails,
+  syncSessionJoinUrlToSheet,
+} from "@/lib/sync-session-join-url";
 
 const log = createLogger("cron:auto-generate-meet");
 
@@ -32,7 +36,7 @@ async function handler(request: NextRequest) {
 
     const now = new Date();
     const config = await getConfig();
-    const generateBeforeMin = config.JOIN_WINDOW_BEFORE_MIN + 5;
+    const generateBeforeMin = config.MEET_GENERATE_BEFORE_MIN;
     const generateBefore = new Date(now.getTime() + generateBeforeMin * 60 * 1000);
 
     const sessions = await prisma.session.findMany({
@@ -43,7 +47,8 @@ async function handler(request: NextRequest) {
         endsAt: { gt: now },
       },
       include: {
-        product: { select: { name: true } },
+        product: { select: { name: true, type: true } },
+        coach: { select: { email: true } },
       },
       take: 20,
       orderBy: { startsAt: "asc" },
@@ -67,7 +72,7 @@ async function handler(request: NextRequest) {
           session.product.name,
           session.modalities,
         );
-        const attendeeEmails: string[] = [];
+        const attendeeEmails = await getSessionMeetAttendeeEmails(session);
 
         const meetResult = await createMeetingWithAttendees(googleConfig, {
           title,
@@ -77,12 +82,27 @@ async function handler(request: NextRequest) {
           attendeeEmails,
         });
 
-        // Best-effort: resolve space name for recordings + TRUSTED access
         let spaceName: string | null = null;
         try {
-          spaceName = await resolveSpaceName(googleConfig, meetResult.meetingId);
+          spaceName = await waitForMeetSpaceName(
+            googleConfig,
+            meetResult.meetingId,
+          );
         } catch {
-          // Space not ready yet
+        }
+
+        if (spaceName) {
+          try {
+            const configured = await configureMeetSpace(googleConfig, spaceName);
+            if (!configured.autoRecord) {
+              log.warn(
+                { sessionId: session.id },
+                "Meet auto-record could not be enabled; access is TRUSTED",
+              );
+            }
+          } catch (err) {
+            log.warn({ err, sessionId: session.id }, "Could not configure Meet space");
+          }
         }
 
         await prisma.session.update({
@@ -95,15 +115,14 @@ async function handler(request: NextRequest) {
           },
         });
 
-        // Best-effort TRUSTED access
-        if (spaceName) {
-          setSpaceAccessType(googleConfig, spaceName, "TRUSTED").catch(
-            (err) => log.warn({ err, sessionId: session.id }, "Could not set TRUSTED access"),
-          );
-        }
-
         generated++;
         log.info({ sessionId: session.id }, "Auto-generated Meet link");
+        syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch((err) =>
+          log.warn(
+            { err, sessionId: session.id },
+            "Failed to write Join URL to paid-users sheet",
+          ),
+        );
       } catch (error) {
         log.error(
           { err: error, sessionId: session.id },

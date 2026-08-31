@@ -36,6 +36,7 @@ interface Template {
   body: string;
   variables: string[];
   isActive: boolean;
+  isTransactional: boolean;
   _count?: { messageLogs: number };
 }
 
@@ -59,6 +60,7 @@ export function TemplateEditor({ templates }: TemplateEditorProps) {
       body: "",
       variables: [],
       isActive: true,
+      isTransactional: false,
     },
   });
 
@@ -66,6 +68,7 @@ export function TemplateEditor({ templates }: TemplateEditorProps) {
   const bodyValue = form.watch("body");
   const subjectValue = form.watch("subject");
   const isActiveValue = form.watch("isActive");
+  const isTransactionalValue = form.watch("isTransactional");
   const variablesValue = form.watch("variables");
 
   function extractVariables(body: string): string[] {
@@ -82,6 +85,7 @@ export function TemplateEditor({ templates }: TemplateEditorProps) {
       body: "",
       variables: [],
       isActive: true,
+      isTransactional: false,
     });
     setEditing("new");
   }
@@ -94,6 +98,7 @@ export function TemplateEditor({ templates }: TemplateEditorProps) {
       body: template.body,
       variables: template.variables,
       isActive: template.isActive,
+      isTransactional: template.isTransactional,
     });
     setEditing(template.id);
   }
@@ -285,6 +290,21 @@ export function TemplateEditor({ templates }: TemplateEditorProps) {
             </Label>
           </div>
 
+          {channelValue === "EMAIL" && (
+            <div className="flex items-center gap-3">
+              <Switch
+                id="tpl-transactional"
+                checked={isTransactionalValue}
+                onCheckedChange={(checked) =>
+                  form.setValue("isTransactional", checked)
+                }
+              />
+              <Label htmlFor="tpl-transactional" className="text-sm font-normal">
+                Service email — send even if the member opted out of marketing
+              </Label>
+            </div>
+          )}
+
           {/* Preview */}
           <div className="p-3 rounded-lg bg-muted/50">
             <p className="text-xs font-medium mb-2 text-muted-foreground">
@@ -335,6 +355,11 @@ export function TemplateEditor({ templates }: TemplateEditorProps) {
                   >
                     {template.isActive ? "Active" : "Inactive"}
                   </span>
+                  {template.channel === "EMAIL" && template.isTransactional && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-info/20 text-info">
+                      Service
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">
                   {template.body.slice(0, 80)}

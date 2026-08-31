@@ -225,6 +225,7 @@ export const messageTemplateSchema = z.object({
   body: z.string().min(1, "Body is required").max(5000, "Body is too long"),
   variables: z.array(z.string().min(1).max(50)).default([]),
   isActive: z.boolean().default(true),
+  isTransactional: z.boolean().default(false),
 });
 
 export type MessageTemplateInput = z.infer<typeof messageTemplateSchema>;

@@ -123,6 +123,12 @@ const CONFIG_META: Record<string, { label: string; description: string; type: "n
     type: "number",
     unit: "min",
   },
+  MEET_GENERATE_BEFORE_MIN: {
+    label: "Generate Meet Before",
+    description: "Minutes before session start to create the unique Meet link and update Join URL on the Paid Users sheet",
+    type: "number",
+    unit: "min",
+  },
   SESSION_GENERATION_DAYS: {
     label: "Session Generation Days",
     description: "How many days ahead the cron generates sessions",

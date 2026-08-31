@@ -1107,6 +1107,7 @@ async function main() {
     update: {
       subject: "Welcome to Mukha Mudra — मुख मुद्रा",
       body: "Namaste {{name}},\n\nWelcome to Mukha Mudra.\n\nWe are delighted to have you join our practice. Whether you choose Face Yoga or Pranayama, every session is a step toward radiance.\n\nExplore your options:\n• Face Yoga — Personalised 1:1 sessions for facial toning & glow\n• Pranayama — Daily group breathing sessions for calm & energy\n\nBegin your practice today from your dashboard.\n\nWith warmth,\nMukha Mudra — मुख मुद्रा",
+      isTransactional: true,
     },
     create: {
       channel: "EMAIL",
@@ -1115,6 +1116,7 @@ async function main() {
       body: "Namaste {{name}},\n\nWelcome to Mukha Mudra.\n\nWe are delighted to have you join our practice. Whether you choose Face Yoga or Pranayama, every session is a step toward radiance.\n\nExplore your options:\n• Face Yoga — Personalised 1:1 sessions for facial toning & glow\n• Pranayama — Daily group breathing sessions for calm & energy\n\nBegin your practice today from your dashboard.\n\nWith warmth,\nMukha Mudra — मुख मुद्रा",
       variables: ["name"],
       isActive: true,
+      isTransactional: true,
     },
   });
 
@@ -1159,6 +1161,7 @@ async function main() {
     update: {
       subject: "Booking Cancelled — {{date}}",
       body: "{{name}},\n\nYour session on {{date}} at {{time}} has been cancelled. Your credit has been refunded to your account.\n\nYou may book another session at your convenience from the dashboard.\n\nNamaste,\nMukha Mudra",
+      isTransactional: true,
     },
     create: {
       channel: "EMAIL",
@@ -1167,6 +1170,7 @@ async function main() {
       body: "{{name}},\n\nYour session on {{date}} at {{time}} has been cancelled. Your credit has been refunded to your account.\n\nYou may book another session at your convenience from the dashboard.\n\nNamaste,\nMukha Mudra",
       variables: ["name", "date", "time"],
       isActive: true,
+      isTransactional: true,
     },
   });
 
@@ -1175,6 +1179,7 @@ async function main() {
     update: {
       subject: "Session Cancelled — {{session_type}} on {{date}}",
       body: "{{name}},\n\nWe regret to inform you that the {{session_type}} session on {{date}} at {{time}} has been cancelled.\n\n{{reason}}\n\nYour credit has been refunded automatically. Please book another session at your convenience.\n\nWe apologise for the inconvenience.\n\nNamaste,\nMukha Mudra",
+      isTransactional: true,
     },
     create: {
       channel: "EMAIL",
@@ -1183,6 +1188,7 @@ async function main() {
       body: "{{name}},\n\nWe regret to inform you that the {{session_type}} session on {{date}} at {{time}} has been cancelled.\n\n{{reason}}\n\nYour credit has been refunded automatically. Please book another session at your convenience.\n\nWe apologise for the inconvenience.\n\nNamaste,\nMukha Mudra",
       variables: ["name", "session_type", "date", "time", "reason"],
       isActive: true,
+      isTransactional: true,
     },
   });
 
@@ -1191,6 +1197,7 @@ async function main() {
     update: {
       subject: "Your Credits Are Expiring Soon — Mukha Mudra",
       body: "{{name}},\n\nYou have {{credits}} unused credit(s) expiring on {{expiry_date}}.\n\nBook your sessions before they expire — consistency is the foundation of transformation.\n\nVisit your dashboard to book now.\n\nNamaste,\nMukha Mudra",
+      isTransactional: true,
     },
     create: {
       channel: "EMAIL",
@@ -1199,6 +1206,7 @@ async function main() {
       body: "{{name}},\n\nYou have {{credits}} unused credit(s) expiring on {{expiry_date}}.\n\nBook your sessions before they expire — consistency is the foundation of transformation.\n\nVisit your dashboard to book now.\n\nNamaste,\nMukha Mudra",
       variables: ["name", "credits", "expiry_date"],
       isActive: true,
+      isTransactional: true,
     },
   });
 
@@ -1268,6 +1276,7 @@ async function main() {
     update: {
       subject: "Subscription Cancelled — Mukha Mudra",
       body: "{{name}},\n\nYour {{plan_name}} subscription has been cancelled. You may continue to access your sessions until {{end_date}}.\n\nWe would be glad to welcome you back anytime.\n\nNamaste,\nMukha Mudra",
+      isTransactional: true,
     },
     create: {
       channel: "EMAIL",
@@ -1276,6 +1285,7 @@ async function main() {
       body: "{{name}},\n\nYour {{plan_name}} subscription has been cancelled. You may continue to access your sessions until {{end_date}}.\n\nWe would be glad to welcome you back anytime.\n\nNamaste,\nMukha Mudra",
       variables: ["name", "plan_name", "end_date"],
       isActive: true,
+      isTransactional: true,
     },
   });
 
