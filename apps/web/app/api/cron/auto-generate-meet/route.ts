@@ -47,8 +47,6 @@ async function handler(request: NextRequest) {
       return NextResponse.json({ status: "ok", generated: 0, cleared });
     }
 
-    await reconcileMeetGroups();
-
     let generated = 0;
 
     for (const session of sessions) {
@@ -81,6 +79,12 @@ async function handler(request: NextRequest) {
           "Failed to auto-generate Meet link for session",
         );
       }
+    }
+
+    try {
+      await reconcileMeetGroups();
+    } catch (err) {
+      log.warn({ err }, "Meet group reconcile failed after auto-generate");
     }
 
     log.info({ generated, total: sessions.length, cleared }, "Auto-generate batch complete");

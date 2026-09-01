@@ -1,9 +1,11 @@
 import { getServerEnv, createLogger } from "@ru/config";
 import {
   addGroupMember,
+  addGroupMembers,
   ensureGroup,
   listGroupMemberEmails,
   removeGroupMember,
+  removeGroupMembers,
 } from "@ru/google-workspace";
 import { prisma } from "@ru/db";
 import { getGoogleConfig } from "@/lib/google-config";
@@ -110,9 +112,24 @@ async function desiredEmails(
   );
 }
 
-export async function reconcileMeetGroups(): Promise<void> {
+export interface ReconcileMeetGroupsResult {
+  added: number;
+  addFailed: number;
+  removed: number;
+  removeFailed: number;
+  errors: string[];
+}
+
+export async function reconcileMeetGroups(): Promise<ReconcileMeetGroupsResult> {
+  const result: ReconcileMeetGroupsResult = {
+    added: 0,
+    addFailed: 0,
+    removed: 0,
+    removeFailed: 0,
+    errors: [],
+  };
   const config = getGoogleConfig();
-  if (!config) return;
+  if (!config) return result;
 
   for (const kind of ["FACE_YOGA", "PRANAYAMA"] as const) {
     const groupEmail = groupEmailFor(kind);
@@ -130,14 +147,34 @@ export async function reconcileMeetGroups(): Promise<void> {
       const toAdd = [...desired].filter((email) => !existing.has(email));
       const toRemove = [...existing].filter((email) => !desired.has(email));
 
-      for (const email of toAdd) {
-        await addGroupMember(config, groupEmail, email);
+      if (toAdd.length > 0) {
+        const added = await addGroupMembers(config, groupEmail, toAdd);
+        result.added += added.added;
+        result.addFailed += added.failed;
+        if (added.failed > 0) {
+          log.warn(
+            { groupEmail, kind, added: added.added, failed: added.failed },
+            "Some Meet group members could not be added",
+          );
+        }
       }
-      for (const email of toRemove) {
-        await removeGroupMember(config, groupEmail, email);
+      if (toRemove.length > 0) {
+        const removed = await removeGroupMembers(config, groupEmail, toRemove);
+        result.removed += removed.removed;
+        result.removeFailed += removed.failed;
+        if (removed.failed > 0) {
+          log.warn(
+            { groupEmail, kind, removed: removed.removed, failed: removed.failed },
+            "Some Meet group members could not be removed",
+          );
+        }
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Meet group reconcile failed";
+      result.errors.push(`${kind}: ${message}`);
       log.warn({ err, groupEmail, kind }, "Meet group reconcile failed");
     }
   }
+
+  return result;
 }

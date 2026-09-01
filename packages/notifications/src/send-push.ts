@@ -8,7 +8,7 @@ import {
   ConsolePushProvider,
   type PushProvider,
 } from "./providers/push";
-import { updateMessageStatus } from "./audit";
+import { updateMessageStatus, failDisabledTemplateMessage, isTemplateDisabled } from "./audit";
 
 const log = createLogger("notifications:push");
 
@@ -33,6 +33,7 @@ function getPushProvider(): PushProvider {
 export async function sendPushForMessageLog(logId: string): Promise<void> {
   const messageLog = await prisma.messageLog.findUnique({
     where: { id: logId },
+    include: { template: { select: { isActive: true } } },
   });
 
   if (
@@ -40,6 +41,11 @@ export async function sendPushForMessageLog(logId: string): Promise<void> {
     messageLog.channel !== "PUSH" ||
     messageLog.status !== "QUEUED"
   ) {
+    return;
+  }
+
+  if (isTemplateDisabled(messageLog.template)) {
+    await failDisabledTemplateMessage(logId);
     return;
   }
 

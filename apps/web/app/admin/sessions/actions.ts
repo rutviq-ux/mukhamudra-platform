@@ -137,7 +137,6 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
       throw new Error("Google Workspace not configured");
     }
 
-    await reconcileMeetGroups();
     const meetResult = await createSessionMeet(googleConfig, session);
 
     await prisma.session.update({
@@ -151,6 +150,8 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
           : {}),
       },
     });
+
+    reconcileMeetGroups().catch(() => {});
 
     revalidatePath("/admin/sessions");
     syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch(() => {});

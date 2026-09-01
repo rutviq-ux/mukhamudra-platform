@@ -2,14 +2,45 @@ import { google } from "googleapis";
 import { createAuthClient, getAdminDirectoryClient } from "./auth";
 import type { GoogleWorkspaceConfig } from "./types";
 
+function httpStatus(error: unknown): number | undefined {
+  const err = error as { code?: number | string; response?: { status?: number } };
+  const raw = err.response?.status ?? err.code;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string" && /^\d+$/.test(raw)) return Number(raw);
+  return undefined;
+}
+
+function errorReason(error: unknown): string {
+  const err = error as {
+    errors?: Array<{ reason?: string }>;
+    message?: string;
+  };
+  return err.errors?.[0]?.reason || "";
+}
+
 function isAlreadyExists(error: unknown): boolean {
-  const err = error as { code?: number; status?: number };
-  return err.code === 409 || err.status === 409;
+  return httpStatus(error) === 409;
 }
 
 function isNotFound(error: unknown): boolean {
-  const err = error as { code?: number; status?: number };
-  return err.code === 404 || err.status === 404;
+  return httpStatus(error) === 404;
+}
+
+function isRateLimited(error: unknown): boolean {
+  if (httpStatus(error) === 429) return true;
+  const reason = errorReason(error);
+  return (
+    reason === "rateLimitExceeded" ||
+    reason === "userRateLimitExceeded" ||
+    reason === "quotaExceeded"
+  );
+}
+
+const MEMBER_BATCH_SIZE = 10;
+const MEMBER_BATCH_PAUSE_MS = 250;
+
+async function pause(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function ensureGroup(
@@ -57,8 +88,8 @@ export async function addGroupMember(
   memberEmail: string,
 ): Promise<void> {
   const admin = getAdminDirectoryClient(config);
-  try {
-    await admin.members.insert({
+  const insert = () =>
+    admin.members.insert({
       groupKey: groupEmail,
       requestBody: {
         email: memberEmail,
@@ -66,11 +97,64 @@ export async function addGroupMember(
         type: "USER",
       },
     });
+
+  try {
+    await insert();
   } catch (error) {
-    if (!isAlreadyExists(error)) {
-      throw error;
+    if (isAlreadyExists(error)) {
+      return;
+    }
+    if (isRateLimited(error)) {
+      await pause(1000);
+      try {
+        await insert();
+        return;
+      } catch (retryError) {
+        if (isAlreadyExists(retryError)) {
+          return;
+        }
+        throw retryError;
+      }
+    }
+    throw error;
+  }
+}
+
+async function runMemberBatches(
+  emails: string[],
+  fn: (email: string) => Promise<void>,
+): Promise<{ ok: number; failed: number }> {
+  const unique = [...new Set(emails.map((email) => email.trim()).filter(Boolean))];
+  let ok = 0;
+  let failed = 0;
+
+  for (let i = 0; i < unique.length; i += MEMBER_BATCH_SIZE) {
+    const chunk = unique.slice(i, i + MEMBER_BATCH_SIZE);
+    const results = await Promise.allSettled(chunk.map((email) => fn(email)));
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        ok++;
+      } else {
+        failed++;
+      }
+    }
+    if (i + MEMBER_BATCH_SIZE < unique.length) {
+      await pause(MEMBER_BATCH_PAUSE_MS);
     }
   }
+
+  return { ok, failed };
+}
+
+export async function addGroupMembers(
+  config: GoogleWorkspaceConfig,
+  groupEmail: string,
+  memberEmails: string[],
+): Promise<{ added: number; failed: number }> {
+  const result = await runMemberBatches(memberEmails, (email) =>
+    addGroupMember(config, groupEmail, email),
+  );
+  return { added: result.ok, failed: result.failed };
 }
 
 export async function removeGroupMember(
@@ -89,6 +173,17 @@ export async function removeGroupMember(
       throw error;
     }
   }
+}
+
+export async function removeGroupMembers(
+  config: GoogleWorkspaceConfig,
+  groupEmail: string,
+  memberEmails: string[],
+): Promise<{ removed: number; failed: number }> {
+  const result = await runMemberBatches(memberEmails, (email) =>
+    removeGroupMember(config, groupEmail, email),
+  );
+  return { removed: result.ok, failed: result.failed };
 }
 
 export async function listGroupMemberEmails(

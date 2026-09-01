@@ -86,6 +86,25 @@ export async function logMessage(entry: AuditLogEntry): Promise<string> {
   return log.id;
 }
 
+export const TEMPLATE_DISABLED_ERROR = "Template disabled";
+
+export async function failDisabledTemplateMessage(logId: string): Promise<void> {
+  await prisma.messageLog.update({
+    where: { id: logId },
+    data: {
+      status: "FAILED",
+      error: TEMPLATE_DISABLED_ERROR,
+      retryCount: 5,
+    },
+  });
+}
+
+export function isTemplateDisabled(
+  template?: { isActive: boolean } | null,
+): boolean {
+  return Boolean(template && !template.isActive);
+}
+
 export async function updateMessageStatus(
   logId: string,
   status: "QUEUED" | "SENT" | "DELIVERED" | "FAILED",

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
-import { WhatsAppBusinessProvider, updateMessageStatus } from "@ru/notifications";
+import { WhatsAppBusinessProvider, updateMessageStatus, failDisabledTemplateMessage, isTemplateDisabled } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
 
 const log = createLogger("cron:send-whatsapp");
@@ -30,7 +30,7 @@ async function handler(_request: NextRequest) {
       where: { channel: "WHATSAPP", status: "QUEUED" },
       orderBy: { createdAt: "asc" },
       take: 50,
-      include: { template: { select: { name: true } } },
+      include: { template: { select: { name: true, isActive: true } } },
     });
 
     if (messages.length === 0) {
@@ -45,6 +45,12 @@ async function handler(_request: NextRequest) {
     const now = Date.now();
 
     for (const msg of messages) {
+      if (isTemplateDisabled(msg.template)) {
+        await failDisabledTemplateMessage(msg.id);
+        skipped++;
+        continue;
+      }
+
       const age = now - msg.createdAt.getTime();
       const hasTemplate = !!msg.template?.name;
 

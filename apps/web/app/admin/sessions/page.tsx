@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@ru/ui";
 import { SessionTable } from "./session-table";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { ManualSyncButtons } from "../manual-sync-buttons";
+
+export const maxDuration = 60;
 
 export default async function AdminSessionsPage() {
   const user = await getCurrentUser();
@@ -54,8 +57,9 @@ export default async function AdminSessionsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <h1 className="text-3xl font-light">Sessions</h1>
+        <ManualSyncButtons />
       </div>
 
       {/* Stats */}

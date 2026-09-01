@@ -125,11 +125,15 @@ async function handler(request: NextRequest) {
         },
       });
       if (alreadySent) {
-        // Step already sent — advance and continue
         await prisma.sequenceEnrollment.update({
           where: { id: enrollment.id },
           data: { currentStep: nextStep.stepOrder, lastStepAt: now },
         });
+        continue;
+      }
+
+      if (!nextStep.template.isActive) {
+        skipped++;
         continue;
       }
 

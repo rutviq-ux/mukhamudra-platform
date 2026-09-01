@@ -33,7 +33,9 @@ export {
 export {
   ensureGroup,
   addGroupMember,
+  addGroupMembers,
   removeGroupMember,
+  removeGroupMembers,
   listGroupMemberEmails,
 } from "./groups";
 export { parsePhoneForSheet } from "./phone";
