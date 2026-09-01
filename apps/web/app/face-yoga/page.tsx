@@ -15,26 +15,12 @@ const PLANS = [
     name: "Annual",
     price: 3000,
     interval: "year",
-    savings: "Save vs monthly",
     features: [
       "Unlimited group sessions",
       "3x/week live classes (Mon/Wed/Fri)",
       "Join any batch (9 PM or 10 PM IST)",
       "WhatsApp community access",
       "Recording add-on eligible (₹1,000/yr)",
-    ],
-  },
-  {
-    slug: "face-monthly",
-    name: "Monthly",
-    price: 1111,
-    interval: "month",
-    features: [
-      "Unlimited group sessions",
-      "3x/week live classes (Mon/Wed/Fri)",
-      "Join any batch (9 PM or 10 PM IST)",
-      "WhatsApp community access",
-      "Cancel anytime",
     ],
   },
 ];
