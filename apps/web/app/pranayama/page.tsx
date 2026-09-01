@@ -15,26 +15,12 @@ const PLANS = [
     name: "Annual",
     price: 3000,
     interval: "year",
-    savings: "Save vs monthly",
     features: [
       "Unlimited group sessions",
       "3x/week live classes (Mon/Wed/Fri)",
       "Join any batch (8 AM or 9 AM IST)",
       "WhatsApp community access",
       "8-stage progressive curriculum",
-    ],
-  },
-  {
-    slug: "pranayama-monthly",
-    name: "Monthly",
-    price: 1111,
-    interval: "month",
-    features: [
-      "Unlimited group sessions",
-      "3x/week live classes (Mon/Wed/Fri)",
-      "Join any batch (8 AM or 9 AM IST)",
-      "WhatsApp community access",
-      "Cancel anytime",
     ],
   },
 ];
