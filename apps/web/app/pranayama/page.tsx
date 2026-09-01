@@ -187,9 +187,6 @@ export default function PranayamaPage() {
                       /{plan.interval}
                     </span>
                   </div>
-                  {plan.savings && (
-                    <p className="text-xs text-success mb-3">{plan.savings}</p>
-                  )}
                   <ul className="space-y-2 text-sm text-muted-foreground">
                     {plan.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2">
