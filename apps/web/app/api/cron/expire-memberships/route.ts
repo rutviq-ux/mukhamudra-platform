@@ -4,6 +4,7 @@ import { createLogger } from "@ru/config";
 import { withCronAuth } from "@/lib/cron-auth";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
 import { reconcileMeetGroups } from "@/lib/sync-meet-group";
+import { onMembershipExpired } from "@ru/notifications";
 
 const log = createLogger("cron:expire-memberships");
 
@@ -21,8 +22,7 @@ async function handler(_request: NextRequest) {
         status: "ACTIVE",
         periodEnd: { lt: new Date() },
       },
-      select: { userId: true },
-      distinct: ["userId"],
+      select: { id: true, userId: true },
     });
 
     const result = await prisma.membership.updateMany({
@@ -40,6 +40,7 @@ async function handler(_request: NextRequest) {
           "Failed to sync paid-user sheet after expiry",
         ),
       );
+      await onMembershipExpired(membership.userId, membership.id);
     }
 
     log.info({ expired: result.count }, "Membership expiry complete");
