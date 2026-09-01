@@ -16,9 +16,7 @@ import { RecordingAddonCheckout } from "@/components/recording-addon-checkout";
 
 const ALL_PLANS: CheckoutPlan[] = [
   { slug: "face-annual", name: "Face Yoga Annual", price: 3000, interval: "year" },
-  { slug: "face-monthly", name: "Face Yoga Monthly", price: 1111, interval: "month" },
   { slug: "pranayama-annual", name: "Pranayama Annual", price: 3000, interval: "year" },
-  { slug: "pranayama-monthly", name: "Pranayama Monthly", price: 1111, interval: "month" },
   { slug: "bundle-annual", name: "Bundle Annual", price: 6000, interval: "year" },
 ];
 
@@ -51,11 +49,9 @@ const PRODUCTS: Product[] = [
     schedule: "Mon / Wed / Fri evenings, 9 PM or 10 PM IST",
     plans: [
       { name: "Annual", slug: "face-annual", price: 3000, interval: "year", popular: true, perMonth: "₹250/mo" },
-      { name: "Monthly", slug: "face-monthly", price: 1111, interval: "month" },
     ],
     features: [
       "Unlimited group sessions",
-      "3x/week live classes",
       "Choose your batch time",
       "WhatsApp community",
       "Recording add-on eligible",
@@ -70,11 +66,9 @@ const PRODUCTS: Product[] = [
     schedule: "Mon / Wed / Fri mornings, 8 AM or 9 AM IST",
     plans: [
       { name: "Annual", slug: "pranayama-annual", price: 3000, interval: "year", popular: true, perMonth: "₹250/mo" },
-      { name: "Monthly", slug: "pranayama-monthly", price: 1111, interval: "month" },
     ],
     features: [
       "Unlimited group sessions",
-      "3x/week live classes",
       "Choose your batch time",
       "WhatsApp community",
       "Recording add-on eligible",
@@ -284,7 +278,7 @@ export function PricingClient() {
                 </div>
                 <div>
                   <h3 className="text-lg font-medium">Recording Access Add-on</h3>
-                  <p className="text-sm text-muted-foreground">Available with all plans — monthly or annual</p>
+                  <p className="text-sm text-muted-foreground">Available with all plans — annual</p>
                 </div>
                 <div className="ml-auto text-right">
                   <span className="text-2xl font-bold">₹1,000</span>
