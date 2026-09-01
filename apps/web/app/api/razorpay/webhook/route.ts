@@ -403,11 +403,11 @@ async function handlePaymentCaptured(payload: any) {
 
     // Interakt CRM sync — Phase 1: CRM only (welcome WA still via sendEnroll*)
     const iMember = await prisma.membership.findUnique({
-      where: { userId_planId: { userId: order.userId, planId: order.planId } },
+      where: { userId_planId: { userId: order!.userId, planId: order!.planId } },
       select: { id: true },
     });
     if (iMember) {
-      await onPaymentCaptured(order.userId, iMember.id);
+      await onPaymentCaptured(order!.userId, iMember.id);
     }
   }
 }
