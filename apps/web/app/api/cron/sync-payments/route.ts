@@ -10,6 +10,7 @@ import {
   notifyPaymentSuccess,
   notifyRecordingAddonPurchased,
   queueWhatsAppGroupAdd,
+  onSubscriptionActivated,
 } from "@ru/notifications";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
 
@@ -75,6 +76,7 @@ async function handler(request: NextRequest) {
             "Membership activated via sync",
           );
           results.memberships.synced++;
+          await onSubscriptionActivated(membership.userId, membership.id);
 
           // Fire notifications (same as webhook)
           const isBundle = membership.plan.product.type === "BUNDLE";
