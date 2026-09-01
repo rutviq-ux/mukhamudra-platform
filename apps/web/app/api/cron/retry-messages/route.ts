@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { withCronAuth } from "@/lib/cron-auth";
+import { TEMPLATE_DISABLED_ERROR } from "@ru/notifications";
 
 const log = createLogger("cron:retry-messages");
 
@@ -52,9 +53,10 @@ async function handler(request: NextRequest) {
     const failedMessages = await prisma.messageLog.findMany({
       where: {
         status: "FAILED",
-        channel: "EMAIL", // WhatsApp retries are handled by send-whatsapp cron
+        channel: "EMAIL",
         createdAt: { gte: dayAgo },
         retryCount: { lt: MAX_RETRIES },
+        NOT: { error: TEMPLATE_DISABLED_ERROR },
       },
       take: 20,
       orderBy: { createdAt: "asc" },

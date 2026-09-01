@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@ru/db";
 import { membershipStatusSchema, createLogger } from "@ru/config";
 import { createAdminAction } from "@/lib/actions/safe-action";
+import { syncUserMeetGroups } from "@/lib/sync-meet-group";
 
 const log = createLogger("action:updateMembershipStatus");
 
@@ -33,7 +34,10 @@ export const updateMembershipStatus = createAdminAction(
 
       const membership = await prisma.membership.findUnique({
         where: { id },
-        include: { user: { select: { id: true, email: true } } },
+        include: {
+          user: { select: { id: true, email: true } },
+          plan: { include: { product: { select: { type: true } } } },
+        },
       });
 
       if (!membership) {
@@ -63,6 +67,14 @@ export const updateMembershipStatus = createAdminAction(
       }
 
       await prisma.membership.update({ where: { id }, data: updateData });
+
+      syncUserMeetGroups(
+        membership.user.email,
+        membership.plan.product.type,
+        newStatus === "ACTIVE" ? "add" : "remove",
+      ).catch((err) =>
+        log.error({ err }, "Failed to sync Meet group after status change"),
+      );
 
       log.info(
         { membershipId: id, from: membership.status, to: newStatus },

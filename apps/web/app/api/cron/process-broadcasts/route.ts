@@ -92,6 +92,9 @@ async function handler(request: NextRequest) {
     let totalSent = 0;
 
     for (const broadcast of broadcasts) {
+      if (!broadcast.template.isActive) {
+        continue;
+      }
       const segment = broadcast.segment as SegmentFilter;
       const variables = broadcast.variables as Record<string, string>;
       const channel = broadcast.template.channel;

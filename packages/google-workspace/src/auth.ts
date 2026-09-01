@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 import type { JWT } from "google-auth-library";
-import type { calendar_v3, meet_v2 } from "googleapis";
+import type { admin_directory_v1, calendar_v3, meet_v2 } from "googleapis";
 import type { GoogleWorkspaceConfig } from "./types";
 
 const SCOPES = [
@@ -10,6 +10,9 @@ const SCOPES = [
   "https://www.googleapis.com/auth/meetings.space.readonly",
   "https://www.googleapis.com/auth/meetings.space.settings",
   "https://www.googleapis.com/auth/drive.meet.readonly",
+  "https://www.googleapis.com/auth/admin.directory.group",
+  "https://www.googleapis.com/auth/admin.directory.group.member",
+  "https://www.googleapis.com/auth/apps.groups.settings",
 ];
 
 /**
@@ -44,4 +47,11 @@ export function getMeetClient(config: GoogleWorkspaceConfig): meet_v2.Meet {
 export function getCalendarClient(config: GoogleWorkspaceConfig): calendar_v3.Calendar {
   const auth = createAuthClient(config);
   return google.calendar({ version: "v3", auth });
+}
+
+export function getAdminDirectoryClient(
+  config: GoogleWorkspaceConfig,
+): admin_directory_v1.Admin {
+  const auth = createAuthClient(config);
+  return google.admin({ version: "directory_v1", auth });
 }

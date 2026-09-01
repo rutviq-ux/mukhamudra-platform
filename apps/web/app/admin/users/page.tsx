@@ -1,6 +1,8 @@
 import { prisma } from "@ru/db";
 import { UserTable } from "./user-table";
 
+export const maxDuration = 60;
+
 export default async function AdminUsersPage() {
   const [users, total] = await Promise.all([
     prisma.user.findMany({

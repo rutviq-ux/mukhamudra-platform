@@ -5,7 +5,7 @@
 
 import { prisma } from "@ru/db";
 import { getServerEnv } from "@ru/config";
-import { updateMessageStatus } from "./audit";
+import { updateMessageStatus, failDisabledTemplateMessage, isTemplateDisabled } from "./audit";
 import {
   ResendEmailProvider,
   ListmonkEmailProvider,
@@ -41,12 +41,17 @@ export async function flushQueuedEmailsForUser(userId: string): Promise<void> {
 
   const messages = await prisma.messageLog.findMany({
     where: { userId, channel: "EMAIL", status: "QUEUED" },
+    include: { template: { select: { isActive: true } } },
     orderBy: { createdAt: "asc" },
     take: 20,
   });
 
   for (const msg of messages) {
-    // Optimistic claim — flip QUEUED -> SENT only if still QUEUED.
+    if (isTemplateDisabled(msg.template)) {
+      await failDisabledTemplateMessage(msg.id);
+      continue;
+    }
+
     const claimed = await prisma.messageLog.updateMany({
       where: { id: msg.id, status: "QUEUED" },
       data: { status: "SENT" },

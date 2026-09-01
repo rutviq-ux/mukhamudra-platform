@@ -5,19 +5,9 @@ import { withCronAuth } from "@/lib/cron-auth";
 import { getGoogleConfig } from "@/lib/google-config";
 import { getConfig } from "@/lib/config";
 import { clearReusedBatchMeetingLinks } from "@/lib/clear-reused-meet-links";
-import {
-  createMeetingWithAttendees,
-  waitForMeetSpaceName,
-  configureMeetSpace,
-} from "@ru/google-workspace";
-import {
-  generateMeetingTitle,
-  generateMeetingDescription,
-} from "@/lib/meet-helpers";
-import {
-  getSessionMeetAttendeeEmails,
-  syncSessionJoinUrlToSheet,
-} from "@/lib/sync-session-join-url";
+import { syncSessionJoinUrlToSheet } from "@/lib/sync-session-join-url";
+import { createSessionMeet } from "@/lib/create-session-meet";
+import { reconcileMeetGroups } from "@/lib/sync-meet-group";
 
 const log = createLogger("cron:auto-generate-meet");
 
@@ -48,7 +38,6 @@ async function handler(request: NextRequest) {
       },
       include: {
         product: { select: { name: true, type: true } },
-        coach: { select: { email: true } },
       },
       take: 20,
       orderBy: { startsAt: "asc" },
@@ -62,56 +51,17 @@ async function handler(request: NextRequest) {
 
     for (const session of sessions) {
       try {
-        const title = generateMeetingTitle(
-          session.product.name,
-          session.modalities,
-          session.startsAt,
-        );
-        const description = generateMeetingDescription(
-          session,
-          session.product.name,
-          session.modalities,
-        );
-        const attendeeEmails = await getSessionMeetAttendeeEmails(session);
-
-        const meetResult = await createMeetingWithAttendees(googleConfig, {
-          title,
-          description,
-          startTime: session.startsAt,
-          endTime: session.endsAt,
-          attendeeEmails,
-        });
-
-        let spaceName: string | null = null;
-        try {
-          spaceName = await waitForMeetSpaceName(
-            googleConfig,
-            meetResult.meetingId,
-          );
-        } catch {
-        }
-
-        if (spaceName) {
-          try {
-            const configured = await configureMeetSpace(googleConfig, spaceName);
-            if (!configured.autoRecord) {
-              log.warn(
-                { sessionId: session.id },
-                "Meet auto-record could not be enabled; access is TRUSTED",
-              );
-            }
-          } catch (err) {
-            log.warn({ err, sessionId: session.id }, "Could not configure Meet space");
-          }
-        }
+        const meetResult = await createSessionMeet(googleConfig, session);
 
         await prisma.session.update({
           where: { id: session.id },
           data: {
             joinUrl: meetResult.meetLink,
-            calendarEventId: meetResult.calendarEventId,
             meetingId: meetResult.meetingId,
-            spaceName,
+            spaceName: meetResult.spaceName,
+            ...(meetResult.calendarEventId
+              ? { calendarEventId: meetResult.calendarEventId }
+              : {}),
           },
         });
 
@@ -129,6 +79,12 @@ async function handler(request: NextRequest) {
           "Failed to auto-generate Meet link for session",
         );
       }
+    }
+
+    try {
+      await reconcileMeetGroups();
+    } catch (err) {
+      log.warn({ err }, "Meet group reconcile failed after auto-generate");
     }
 
     log.info({ generated, total: sessions.length, cleared }, "Auto-generate batch complete");

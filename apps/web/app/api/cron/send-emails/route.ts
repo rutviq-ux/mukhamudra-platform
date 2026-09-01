@@ -6,6 +6,8 @@ import {
   ListmonkEmailProvider,
   ConsoleEmailProvider,
   updateMessageStatus,
+  failDisabledTemplateMessage,
+  isTemplateDisabled,
   type EmailProvider,
 } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
@@ -41,6 +43,7 @@ async function handler(request: NextRequest) {
         channel: "EMAIL",
         status: "QUEUED",
       },
+      include: { template: { select: { isActive: true } } },
       orderBy: { createdAt: "asc" },
       take: 50,
     });
@@ -55,8 +58,12 @@ async function handler(request: NextRequest) {
 
     for (const msg of messages) {
       try {
-        // Optimistic lock: only claim this message if still QUEUED
-        // Prevents duplicate sends when multiple cron instances run concurrently
+        if (isTemplateDisabled(msg.template)) {
+          await failDisabledTemplateMessage(msg.id);
+          skipped++;
+          continue;
+        }
+
         const claimed = await prisma.messageLog.updateMany({
           where: { id: msg.id, status: "QUEUED" },
           data: { status: "SENT" },
@@ -93,7 +100,7 @@ async function handler(request: NextRequest) {
       }
     }
 
-    log.info({ sent, failed, total: messages.length }, "Email send batch complete");
+    log.info({ sent, failed, skipped, total: messages.length }, "Email send batch complete");
 
     return NextResponse.json({ status: "ok", sent, failed });
   } catch (error) {

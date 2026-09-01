@@ -30,6 +30,7 @@ import { verifyWebhookSignature } from "@/lib/razorpay";
 import { getSubscriptionPeriod } from "@/lib/memberships";
 import { getPostHogServer } from "@/lib/posthog-server";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
+import { syncUserMeetGroups } from "@/lib/sync-meet-group";
 
 const log = createLogger("api:razorpay:webhook");
 
@@ -478,8 +479,18 @@ async function handleSubscriptionActivated(payload: any) {
   // Queue WhatsApp group adds for all batches the product covers
   const user = await prisma.user.findUnique({
     where: { id: membership.userId },
-    select: { phone: true },
+    select: { phone: true, email: true },
   });
+
+  if (user?.email) {
+    syncUserMeetGroups(
+      user.email,
+      membership.plan.product.type,
+      "add",
+    ).catch((err) =>
+      log.error({ err }, "Failed to add member to Meet group"),
+    );
+  }
 
   if (user?.phone) {
     const productTypes =

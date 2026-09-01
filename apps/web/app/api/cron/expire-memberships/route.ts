@@ -3,6 +3,7 @@ import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { withCronAuth } from "@/lib/cron-auth";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
+import { reconcileMeetGroups } from "@/lib/sync-meet-group";
 
 const log = createLogger("cron:expire-memberships");
 
@@ -42,6 +43,10 @@ async function handler(_request: NextRequest) {
     }
 
     log.info({ expired: result.count }, "Membership expiry complete");
+
+    reconcileMeetGroups().catch((err) =>
+      log.error({ err }, "Failed to reconcile Meet groups after expiry"),
+    );
 
     return NextResponse.json({ status: "ok", expired: result.count });
   } catch (error) {

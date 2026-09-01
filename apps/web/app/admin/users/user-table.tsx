@@ -27,6 +27,7 @@ import {
   Plus,
   Search,
 } from "lucide-react";
+import { ManualSyncButtons } from "../manual-sync-buttons";
 
 interface User {
   id: string;
@@ -159,17 +160,20 @@ export function UserTable({ initialData }: { initialData: UsersResponse }) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl md:text-3xl font-light">Users</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data.total} total user{data.total !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          Create User
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ManualSyncButtons />
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Create User
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
