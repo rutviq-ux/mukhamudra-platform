@@ -25,6 +25,9 @@ import {
   sendEnrollBundleMonthly,
   sendEnrollRecordingsAddon,
   flushQueuedEmailsForUser,
+  onPaymentCaptured,
+  onSubscriptionActivated,
+  onSubscriptionCancelled,
 } from "@ru/notifications";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { getSubscriptionPeriod } from "@/lib/memberships";
@@ -397,6 +400,15 @@ async function handlePaymentCaptured(payload: any) {
         log.error({ err, userId: order.userId }, "Failed to sync paid-user sheet"),
       );
     }
+
+    // Interakt CRM sync — Phase 1: CRM only (welcome WA still via sendEnroll*)
+    const iMember = await prisma.membership.findUnique({
+      where: { userId_planId: { userId: order.userId, planId: order.planId } },
+      select: { id: true },
+    });
+    if (iMember) {
+      await onPaymentCaptured(order.userId, iMember.id);
+    }
   }
 }
 
@@ -435,6 +447,9 @@ async function handleSubscriptionActivated(payload: any) {
   });
 
   log.info({ subscriptionId }, "Membership activated");
+
+  // Interakt CRM sync (Phase 1: CRM only)
+  await onSubscriptionActivated(membership.userId, membership.id);
 
   const posthog = getPostHogServer();
   posthog.capture({
@@ -650,6 +665,9 @@ async function handleSubscriptionCancelled(payload: any) {
   });
 
   log.info({ subscriptionId }, "Membership cancelled");
+
+  // Interakt CRM update to "cancelled"
+  await onSubscriptionCancelled(membership.userId, membership.id);
 
   const posthogCancel = getPostHogServer();
   posthogCancel.capture({
