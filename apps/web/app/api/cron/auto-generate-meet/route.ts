@@ -8,6 +8,7 @@ import { clearReusedBatchMeetingLinks } from "@/lib/clear-reused-meet-links";
 import { syncSessionJoinUrlToSheet } from "@/lib/sync-session-join-url";
 import { createSessionMeet } from "@/lib/create-session-meet";
 import { reconcileMeetGroups } from "@/lib/sync-meet-group";
+import { onMeetLinkGenerated } from "@ru/notifications";
 
 const log = createLogger("cron:auto-generate-meet");
 
@@ -73,6 +74,7 @@ async function handler(request: NextRequest) {
             "Failed to write Join URL to paid-users sheet",
           ),
         );
+        await onMeetLinkGenerated(session.id, meetResult.meetLink);
       } catch (error) {
         log.error(
           { err: error, sessionId: session.id },
