@@ -309,7 +309,7 @@ export async function sendSessionReminders(): Promise<number> {
           user: { select: { id: true, name: true } },
         },
       },
-      batch: { select: { name: true, meetingLink: true } },
+      batch: { select: { name: true } },
       product: { select: { type: true } },
     },
   });
@@ -321,19 +321,12 @@ export async function sendSessionReminders(): Promise<number> {
   for (const session of sessions) {
     const sessionType = session.batch?.name || session.title || "Yoga";
     const joinLink = `${appUrl}/app/join/${session.id}`;
-    const uniqueMeet =
-      session.joinUrl && session.joinUrl !== session.batch?.meetingLink
-        ? session.joinUrl
-        : "";
-    const meetingLink =
-      uniqueMeet || "Available from your dashboard when class opens.";
     const dashboardUrl = `${appUrl}/app`;
 
     const recipientSelect = {
       id: true,
       name: true,
       phone: true,
-      email: true,
       whatsappOptIn: true,
     } as const;
 
@@ -379,27 +372,15 @@ export async function sendSessionReminders(): Promise<number> {
         sent++;
       }
 
-      const [, pushLogId] = await Promise.all([
-        queueNotification({
-          userId: user.id,
-          templateName: "session_reminder_email",
-          variables: {
-            name,
-            session_type: sessionType,
-            join_link: joinLink,
-            meeting_link: meetingLink,
-          },
-        }),
-        queueNotification({
-          userId: user.id,
-          templateName: "session_reminder_push",
-          variables: {
-            name,
-            session_type: sessionType,
-            join_link: joinLink,
-          },
-        }),
-      ]);
+      const pushLogId = await queueNotification({
+        userId: user.id,
+        templateName: "session_reminder_push",
+        variables: {
+          name,
+          session_type: sessionType,
+          join_link: joinLink,
+        },
+      });
       if (pushLogId) {
         await sendPushForMessageLog(pushLogId).catch((err) =>
           log.error({ err }, "Failed to send push notification"),
