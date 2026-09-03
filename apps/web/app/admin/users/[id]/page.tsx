@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@ru/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { UserActions } from "./user-actions";
 import { MembershipStatus } from "./membership-actions";
+import { RecordingAccessActions } from "./recording-access-actions";
 
 export default async function AdminUserDetailPage({
   params,
@@ -296,8 +297,9 @@ export default async function AdminUserDetailPage({
 
         {/* Recording Access */}
         <Card glass>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle>Recording Access ({user.recordingAccess.length})</CardTitle>
+            <RecordingAccessActions userId={user.id} />
           </CardHeader>
           <CardContent>
             {user.recordingAccess.length > 0 ? (
