@@ -314,3 +314,41 @@ export const deleteUser = createAdminAction("deleteUser", {
     return { email: user.email, clerkId: user.clerkId };
   },
 });
+
+
+/* ─── Grant Recording Access ─── */
+const grantRecordingAccessSchema = z.object({
+  userId: z.string().cuid(),
+  months: z.number().int().min(1).max(36).default(12),
+});
+
+export const grantRecordingAccess = createAdminAction("grantRecordingAccess", {
+  schema: grantRecordingAccessSchema,
+  audit: {
+    action: "recording_access.grant",
+    targetType: "User",
+    getTargetId: (data) => data.userId,
+    getMetadata: (data) => ({ months: data.months }),
+  },
+  handler: async ({ data }) => {
+    const { userId, months } = data;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error("User not found");
+
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + months);
+
+    const access = await prisma.recordingAccess.create({
+      data: {
+        userId,
+        orderId: null,
+        expiresAt,
+        isActive: true,
+      },
+    });
+
+    revalidatePath(`/admin/users/${userId}`);
+    return { id: access.id, expiresAt: access.expiresAt.toISOString() };
+  },
+});
