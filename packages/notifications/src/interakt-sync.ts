@@ -6,71 +6,71 @@
  *
  * ─── Ship order (from Tejas's review) ────────────────────────────────────────
  *
- *   PHASE 1 (now): Option B — CRM sync + Meet link only.
- *     sendTemplate() calls inside onSubscriptionActivated and
- *     onSubscriptionCancelled are commented out. Existing Meta sendEnroll*
- *     functions continue to handle welcome WhatsApps.
+ * PHASE 1 (now): Option B — CRM sync + Meet link only.
+ * sendTemplate() calls inside onSubscriptionActivated and
+ * onSubscriptionCancelled are commented out. Existing Meta sendEnroll*
+ * functions continue to handle welcome WhatsApps.
  *
- *   PHASE 2 (after templates approved in Interakt/Meta):
- *     Uncomment the sendTemplate() blocks, AND remove sendEnroll* calls from
- *     razorpay/webhook/route.ts to avoid duplicate welcome messages.
- *     That is Option A — Interakt as the single WhatsApp sender.
+ * PHASE 2 (after templates approved in Interakt/Meta):
+ * Uncomment the sendTemplate() blocks, AND remove sendEnroll* calls from
+ * razorpay/webhook/route.ts to avoid duplicate welcome messages.
+ * That is Option A — Interakt as the single WhatsApp sender.
  *
  * ─── Integration points (callers MUST await — no .catch() on Vercel) ─────────
  *
- *   razorpay/webhook/route.ts → handlePaymentCaptured (payment.captured)
- *     await onPaymentCaptured(userId, membershipId);
+ * razorpay/webhook/route.ts → handlePaymentCaptured (payment.captured)
+ *   await onPaymentCaptured(userId, membershipId);
  *
- *   razorpay/webhook/route.ts → handleSubscriptionActivated
- *     await onSubscriptionActivated(userId, membership.id);
+ * razorpay/webhook/route.ts → handleSubscriptionActivated
+ *   await onSubscriptionActivated(userId, membership.id);
  *
- *   razorpay/webhook/route.ts → handleSubscriptionCancelled
- *     await onSubscriptionCancelled(userId, membership.id);
+ * razorpay/webhook/route.ts → handleSubscriptionCancelled
+ *   await onSubscriptionCancelled(userId, membership.id);
  *
- *   cron/sync-payments/route.ts → after marking membership ACTIVE
- *     await onSubscriptionActivated(userId, membership.id);
+ * cron/sync-payments/route.ts → after marking membership ACTIVE
+ *   await onSubscriptionActivated(userId, membership.id);
  *
- *   cron/expire-memberships/route.ts → after marking membership EXPIRED
- *     await onMembershipExpired(userId, membership.id);
+ * cron/expire-memberships/route.ts → after marking membership EXPIRED
+ *   await onMembershipExpired(userId, membership.id);
  *
- *   cron/auto-generate-meet/route.ts → after syncSessionJoinUrlToSheet()
- *     await onMeetLinkGenerated(session.id, meetResult.meetLink);
+ * cron/auto-generate-meet/route.ts → after syncSessionJoinUrlToSheet()
+ *   await onMeetLinkGenerated(session.id, meetResult.meetLink);
  *
- *   apps/web/src/app/api/admin/generate-session-meet/route.ts → same
- *     await onMeetLinkGenerated(sessionId, meetLink);
+ * apps/web/src/app/api/admin/generate-session-meet/route.ts → same
+ *   await onMeetLinkGenerated(sessionId, meetLink);
  *
- *   apps/web/src/app/api/admin/cancel-membership/route.ts
- *     await onSubscriptionCancelled(userId, membershipId);
+ * apps/web/src/app/api/admin/cancel-membership/route.ts
+ *   await onSubscriptionCancelled(userId, membershipId);
  *
  * ─── Templates Haripriya must create in Interakt (Phase 2) ───────────────────
  *
- *   Template name                       Variables ({{1}}, {{2}}, …)
- *   ─────────────────────────────────   ──────────────────────────────────────
- *   mukhamudra_welcome_face_yoga        {{1}}=first_name
- *                                       {{2}}=membership_valid_until
- *                                       {{3}}=class_time  (e.g. "9 PM")
- *                                       {{4}}=dashboard_url
+ * Template name                     Variables ({{1}}, {{2}}, …)
+ * ───────────────────────────────── ──────────────────────────────────────
+ * mukhamudra_welcome_face_yoga       {{1}}=first_name
+ *                                    {{2}}=membership_valid_until
+ *                                    {{3}}=class_time (e.g. "9 PM")
+ *                                    {{4}}=dashboard_url
  *
- *   mukhamudra_welcome_pranayama        {{1}}=first_name
- *                                       {{2}}=membership_valid_until
- *                                       {{3}}=class_time
- *                                       {{4}}=dashboard_url
+ * mukhamudra_welcome_pranayama       {{1}}=first_name
+ *                                    {{2}}=membership_valid_until
+ *                                    {{3}}=class_time
+ *                                    {{4}}=dashboard_url
  *
- *   mukhamudra_welcome_bundle           {{1}}=first_name
- *                                       {{2}}=membership_valid_until
- *                                       {{3}}=pranayama_class_time
- *                                       {{4}}=faceyoga_class_time
- *                                       {{5}}=dashboard_url
+ * mukhamudra_welcome_bundle          {{1}}=first_name
+ *                                    {{2}}=membership_valid_until
+ *                                    {{3}}=pranayama_class_time
+ *                                    {{4}}=faceyoga_class_time
+ *                                    {{5}}=dashboard_url
  *
- *   mukhamudra_subscription_cancelled  {{1}}=first_name
- *                                       {{2}}=plan_name
- *                                       {{3}}=last_access_date
+ * mukhamudra_subscription_cancelled  {{1}}=first_name
+ *                                    {{2}}=plan_name
+ *                                    {{3}}=last_access_date
  *
- *   mukhamudra_meet_link_ready          {{1}}=first_name
- *                                       {{2}}=class_type  (e.g. "Morning Pranayama")
- *                                       {{3}}=join_url    (direct Google Meet link)
- *                                       NOTE: confirm Meta approves a dynamic URL
- *                                       as a body variable before submitting.
+ * mukhamudra_meet_link_ready         {{1}}=first_name
+ *                                    {{2}}=class_type (e.g. "Morning Pranayama")
+ *                                    {{3}}=join_url (direct Google Meet link)
+ *                                    NOTE: confirm Meta approves a dynamic URL
+ *                                    as a body variable before submitting.
  */
 
 import { prisma } from "@ru/db";
@@ -84,9 +84,6 @@ const APP_URL =
 const DASHBOARD_URL = `${APP_URL}/app`;
 
 // ─── Template names ───────────────────────────────────────────────────────────
-// Each value MUST match the name registered in the Interakt dashboard exactly.
-// A mismatch causes Interakt to return 400 (logged, not thrown).
-
 const TEMPLATES = {
   WELCOME_FACE_YOGA: "mukhamudra_welcome_face_yoga",
   WELCOME_PRANAYAMA: "mukhamudra_welcome_pranayama",
@@ -95,19 +92,8 @@ const TEMPLATES = {
   MEET_LINK_READY: "mukhamudra_meet_link_ready",
 } as const;
 
-// ─── Meet-link dedup guard ────────────────────────────────────────────────────
-// Tracks sessions already notified in this process invocation.
-// Sufficient for a small class with a single Vercel cron instance.
-// For multi-instance deployments: replace with a DB-backed interaktMeetSentAt
-// field on the Session model.
 const meetLinkSentSessions = new Set<string>();
-
-// ─── Concurrency ─────────────────────────────────────────────────────────────
-// Max parallel Interakt HTTP calls per batch — keeps Vercel from timing out
-// on larger classes.
 const CONCURRENCY = 10;
-
-// ─── Private helpers ──────────────────────────────────────────────────────────
 
 function firstName(fullName: string | null | undefined): string {
   if (!fullName) return "there";
@@ -123,7 +109,6 @@ function fmtDate(d: Date | null | undefined): string {
   });
 }
 
-/** "21:00" → "9 PM" */
 function fmtBatchTime(startTime: string): string {
   const [hStr] = startTime.split(":");
   const h = parseInt(hStr ?? "0", 10);
@@ -132,12 +117,6 @@ function fmtBatchTime(startTime: string): string {
   return `${h12} ${period}`;
 }
 
-/**
- * Returns the EARLIEST active batch time for a given product type.
- * NOTE: evening-batch members (e.g. 10 PM) will see the earliest time (e.g. 9 PM)
- * in their welcome message. Fix by matching the member's booking to their batch
- * if this becomes a support issue. Phase 1 behaviour is fine.
- */
 async function getBatchTime(productType: string): Promise<string> {
   const batch = await prisma.batch.findFirst({
     where: { isActive: true, product: { type: productType as any } },
@@ -147,7 +126,6 @@ async function getBatchTime(productType: string): Promise<string> {
   return batch ? fmtBatchTime(batch.startTime) : "your scheduled time";
 }
 
-/** Run an array of async tasks in chunks of `size` at most concurrently. */
 async function runConcurrently<T>(
   tasks: (() => Promise<T>)[],
   size: number,
@@ -161,44 +139,13 @@ async function runConcurrently<T>(
   return results;
 }
 
-// ─── Public functions ─────────────────────────────────────────────────────────
-
-/**
- * Called when a one-time payment is captured (payment.captured webhook event).
- *
- * For Razorpay subscriptions the main activation comes through
- * handleSubscriptionActivated. For one-time / manual orders that create a
- * membership directly from payment.captured, call THIS function so the contact
- * is synced to Interakt CRM immediately on payment.
- *
- * In Phase 1 (Option B): only syncs to CRM. Welcome WhatsApp still sent by
- * the existing Meta sendEnroll* call in the same webhook handler.
- *
- * @param userId       User.id from the DB
- * @param membershipId Membership.id just created for this payment
- */
 export async function onPaymentCaptured(
   userId: string,
   membershipId: string,
 ): Promise<void> {
-  // Same logic as onSubscriptionActivated — CRM sync on payment.
   return onSubscriptionActivated(userId, membershipId);
 }
 
-/**
- * Called when a subscription (or one-time plan) is activated.
- *
- * Phase 1 (Option B — CURRENT):
- *   Only syncs the contact to Interakt CRM. No WhatsApp template sent here.
- *   Welcome WhatsApp is still handled by sendEnroll* (Meta Cloud API).
- *
- * Phase 2 (Option A — AFTER template approval + sendEnroll* removed):
- *   Uncomment the sendTemplate() block below AND remove sendEnroll* calls
- *   from razorpay/webhook/route.ts to avoid duplicate welcome messages.
- *
- * @param userId       User.id from the DB
- * @param membershipId Membership.id that was just activated
- */
 export async function onSubscriptionActivated(
   userId: string,
   membershipId: string,
@@ -207,12 +154,7 @@ export async function onSubscriptionActivated(
     const [user, membership] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
-        select: {
-          name: true,
-          email: true,
-          phone: true,
-          whatsappOptIn: true,
-        },
+        select: { name: true, email: true, phone: true, whatsappOptIn: true },
       }),
       prisma.membership.findUnique({
         where: { id: membershipId },
@@ -221,28 +163,19 @@ export async function onSubscriptionActivated(
     ]);
 
     if (!user || !membership) {
-      log.warn(
-        { userId, membershipId },
-        "[Interakt] onSubscriptionActivated: user or membership not found",
-      );
+      log.warn({ userId, membershipId }, "[Interakt] onSubscriptionActivated: user or membership not found");
       return;
     }
 
     const phone = formatPhone(user.phone);
     if (!phone) {
-      log.info(
-        { userId },
-        "[Interakt] onSubscriptionActivated: no valid phone, skipping",
-      );
+      log.info({ userId }, "[Interakt] onSubscriptionActivated: no valid phone, skipping");
       return;
     }
 
     const planSlug = membership.plan.slug;
     const periodEnd = membership.periodEnd;
 
-    // ── Step 1: Sync to Interakt CRM ─────────────────────────────────────────
-    // Always run regardless of WhatsApp opt-in — Haripriya's CRM needs every
-    // paying member so she can run segment campaigns from Interakt.
     await upsertContact(phone, {
       name: user.name ?? undefined,
       email: user.email,
@@ -251,73 +184,35 @@ export async function onSubscriptionActivated(
       subscriptionStatus: "active",
     });
 
-    log.info(
-      { userId, planSlug },
-      "[Interakt] onSubscriptionActivated: CRM synced",
-    );
+    log.info({ userId, planSlug }, "[Interakt] onSubscriptionActivated: CRM synced");
 
     // ── Step 2: Send welcome WhatsApp template (PHASE 2 ONLY) ────────────────
     // ⚠ OPTION B — COMMENTED OUT: sendEnroll* in webhook/route.ts handles
-    //   welcome WhatsApps. Uncomment this block only after:
-    //     (a) Interakt templates are Meta-approved
-    //     (b) sendEnroll* calls are removed from razorpay/webhook/route.ts
+    // welcome WhatsApps. Uncomment this block only after:
+    // (a) Interakt templates are Meta-approved
+    // (b) sendEnroll* calls are removed from razorpay/webhook/route.ts
     //
     // if (!user.whatsappOptIn) {
     //   log.info({ userId }, "[Interakt] WhatsApp opt-in false, skipping welcome");
     //   return;
     // }
-    //
     // const name = firstName(user.name);
     // const validUntil = fmtDate(periodEnd);
-    //
     // if (planSlug === "face-annual" || planSlug === "face-monthly") {
     //   const classTime = await getBatchTime("FACE_YOGA");
-    //   await sendTemplate({
-    //     phoneNumber: phone,
-    //     templateName: TEMPLATES.WELCOME_FACE_YOGA,
-    //     bodyValues: [name, validUntil, classTime, DASHBOARD_URL],
-    //   });
+    //   await sendTemplate({ phoneNumber: phone.local, countryCode: phone.countryCode, templateName: TEMPLATES.WELCOME_FACE_YOGA, bodyValues: [name, validUntil, classTime, DASHBOARD_URL] });
     // } else if (planSlug === "pranayama-annual" || planSlug === "pranayama-monthly") {
     //   const classTime = await getBatchTime("PRANAYAMA");
-    //   await sendTemplate({
-    //     phoneNumber: phone,
-    //     templateName: TEMPLATES.WELCOME_PRANAYAMA,
-    //     bodyValues: [name, validUntil, classTime, DASHBOARD_URL],
-    //   });
+    //   await sendTemplate({ phoneNumber: phone.local, countryCode: phone.countryCode, templateName: TEMPLATES.WELCOME_PRANAYAMA, bodyValues: [name, validUntil, classTime, DASHBOARD_URL] });
     // } else if (planSlug === "bundle-annual" || planSlug === "bundle-monthly") {
-    //   const [pranayamaTime, faceYogaTime] = await Promise.all([
-    //     getBatchTime("PRANAYAMA"),
-    //     getBatchTime("FACE_YOGA"),
-    //   ]);
-    //   await sendTemplate({
-    //     phoneNumber: phone,
-    //     templateName: TEMPLATES.WELCOME_BUNDLE,
-    //     bodyValues: [name, validUntil, pranayamaTime, faceYogaTime, DASHBOARD_URL],
-    //   });
-    // } else {
-    //   log.info({ userId, planSlug }, "[Interakt] unrecognised plan slug, no welcome template");
+    //   const [pranayamaTime, faceYogaTime] = await Promise.all([getBatchTime("PRANAYAMA"), getBatchTime("FACE_YOGA")]);
+    //   await sendTemplate({ phoneNumber: phone.local, countryCode: phone.countryCode, templateName: TEMPLATES.WELCOME_BUNDLE, bodyValues: [name, validUntil, pranayamaTime, faceYogaTime, DASHBOARD_URL] });
     // }
   } catch (err) {
-    // Never re-throw — must not crash the payment webhook
-    log.error(
-      { err, userId, membershipId },
-      "[Interakt] onSubscriptionActivated threw unexpectedly",
-    );
+    log.error({ err, userId, membershipId }, "[Interakt] onSubscriptionActivated threw unexpectedly");
   }
 }
 
-/**
- * Called when a subscription is cancelled — by Razorpay webhook OR admin action.
- *
- * Phase 1 (Option B — CURRENT):
- *   Only updates the contact's CRM status to "cancelled". No WhatsApp sent.
- *
- * Phase 2 (Option A):
- *   Uncomment the sendTemplate() block below.
- *
- * @param userId       User.id from the DB
- * @param membershipId Membership.id that was just cancelled
- */
 export async function onSubscriptionCancelled(
   userId: string,
   membershipId: string,
@@ -326,12 +221,7 @@ export async function onSubscriptionCancelled(
     const [user, membership] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
-        select: {
-          name: true,
-          email: true,
-          phone: true,
-          whatsappOptIn: true,
-        },
+        select: { name: true, email: true, phone: true, whatsappOptIn: true },
       }),
       prisma.membership.findUnique({
         where: { id: membershipId },
@@ -340,23 +230,16 @@ export async function onSubscriptionCancelled(
     ]);
 
     if (!user || !membership) {
-      log.warn(
-        { userId, membershipId },
-        "[Interakt] onSubscriptionCancelled: user or membership not found",
-      );
+      log.warn({ userId, membershipId }, "[Interakt] onSubscriptionCancelled: user or membership not found");
       return;
     }
 
     const phone = formatPhone(user.phone);
     if (!phone) {
-      log.info(
-        { userId },
-        "[Interakt] onSubscriptionCancelled: no valid phone, skipping",
-      );
+      log.info({ userId }, "[Interakt] onSubscriptionCancelled: no valid phone, skipping");
       return;
     }
 
-    // ── Step 1: Update contact status in Interakt CRM ─────────────────────────
     await upsertContact(phone, {
       name: user.name ?? undefined,
       email: user.email,
@@ -365,44 +248,18 @@ export async function onSubscriptionCancelled(
       subscriptionStatus: "cancelled",
     });
 
-    log.info(
-      { userId },
-      "[Interakt] onSubscriptionCancelled: CRM updated to cancelled",
-    );
+    log.info({ userId }, "[Interakt] onSubscriptionCancelled: CRM updated to cancelled");
 
     // ── Step 2: Send cancellation WhatsApp (PHASE 2 ONLY) ────────────────────
     // ⚠ OPTION B — COMMENTED OUT.
-    // Uncomment after confirming no duplicate with existing Meta flows.
-    //
     // if (user.whatsappOptIn) {
-    //   await sendTemplate({
-    //     phoneNumber: phone,
-    //     templateName: TEMPLATES.SUBSCRIPTION_CANCELLED,
-    //     bodyValues: [
-    //       firstName(user.name),
-    //       membership.plan.name,
-    //       fmtDate(membership.periodEnd),
-    //     ],
-    //   });
+    //   await sendTemplate({ phoneNumber: phone.local, countryCode: phone.countryCode, templateName: TEMPLATES.SUBSCRIPTION_CANCELLED, bodyValues: [firstName(user.name), membership.plan.name, fmtDate(membership.periodEnd)] });
     // }
   } catch (err) {
-    log.error(
-      { err, userId, membershipId },
-      "[Interakt] onSubscriptionCancelled threw unexpectedly",
-    );
+    log.error({ err, userId, membershipId }, "[Interakt] onSubscriptionCancelled threw unexpectedly");
   }
 }
 
-/**
- * Called when a membership transitions from ACTIVE → EXPIRED.
- * Used by: cron/expire-memberships
- *
- * Updates the Interakt CRM contact status to "expired" so Haripriya's
- * win-back automations and segments stay accurate.
- *
- * @param userId       User.id from the DB
- * @param membershipId Membership.id that just expired
- */
 export async function onMembershipExpired(
   userId: string,
   membershipId: string,
@@ -420,10 +277,7 @@ export async function onMembershipExpired(
     ]);
 
     if (!user || !membership) {
-      log.warn(
-        { userId, membershipId },
-        "[Interakt] onMembershipExpired: user or membership not found",
-      );
+      log.warn({ userId, membershipId }, "[Interakt] onMembershipExpired: user or membership not found");
       return;
     }
 
@@ -438,47 +292,18 @@ export async function onMembershipExpired(
       subscriptionStatus: "expired",
     });
 
-    log.info(
-      { userId, membershipId },
-      "[Interakt] onMembershipExpired: CRM updated to expired",
-    );
+    log.info({ userId, membershipId }, "[Interakt] onMembershipExpired: CRM updated to expired");
   } catch (err) {
-    log.error(
-      { err, userId, membershipId },
-      "[Interakt] onMembershipExpired threw unexpectedly",
-    );
+    log.error({ err, userId, membershipId }, "[Interakt] onMembershipExpired threw unexpectedly");
   }
 }
 
-/**
- * Called when a Google Meet link is generated for an upcoming session.
- * Sends the DIRECT join URL to all active members of the session's product
- * type who have WhatsApp opted in.
- *
- * This fills the gap in the existing system: sendSessionReminders() sends a
- * reminder but only includes the dashboard URL, not the actual Meet link.
- * This function sends the clickable join URL directly, 25 minutes before class.
- *
- * Callers:
- *   - cron/auto-generate-meet/route.ts (T-25, automatic)
- *   - admin/generate-session-meet/route.ts (manual early generation)
- *
- * Dedup: skips any sessionId already notified in this process invocation.
- * For multi-instance safety, replace meetLinkSentSessions with a DB field.
- *
- * @param sessionId  Session.id for the upcoming class
- * @param joinUrl    The Google Meet join URL just generated
- */
 export async function onMeetLinkGenerated(
   sessionId: string,
   joinUrl: string,
 ): Promise<void> {
-  // ── Dedup guard ─────────────────────────────────────────────────────────────
   if (meetLinkSentSessions.has(sessionId)) {
-    log.info(
-      { sessionId },
-      "[Interakt] onMeetLinkGenerated: already notified this session, skipping",
-    );
+    log.info({ sessionId }, "[Interakt] onMeetLinkGenerated: already notified this session, skipping");
     return;
   }
 
@@ -493,20 +318,12 @@ export async function onMeetLinkGenerated(
     });
 
     if (!session) {
-      log.warn(
-        { sessionId },
-        "[Interakt] onMeetLinkGenerated: session not found",
-      );
+      log.warn({ sessionId }, "[Interakt] onMeetLinkGenerated: session not found");
       return;
     }
 
-    // Human-readable label for {{2}} in the template
-    const sessionLabel =
-      session.batch?.name || session.title || session.product.name;
+    const sessionLabel = session.batch?.name || session.title || session.product.name;
 
-    // Face Yoga sessions are accessible to FACE_YOGA + BUNDLE members.
-    // Pranayama sessions are accessible to PRANAYAMA + BUNDLE members.
-    // BUNDLE-type sessions (if any) are accessible only to BUNDLE members.
     const productTypes: string[] =
       session.product.type === "BUNDLE"
         ? ["BUNDLE"]
@@ -519,9 +336,7 @@ export async function onMeetLinkGenerated(
         memberships: {
           some: {
             status: "ACTIVE",
-            plan: {
-              product: { type: { in: productTypes as any } },
-            },
+            plan: { product: { type: { in: productTypes as any } } },
           },
         },
       },
@@ -529,26 +344,23 @@ export async function onMeetLinkGenerated(
     });
 
     if (users.length === 0) {
-      log.info(
-        { sessionId },
-        "[Interakt] onMeetLinkGenerated: no eligible users with WhatsApp opt-in",
-      );
+      log.info({ sessionId }, "[Interakt] onMeetLinkGenerated: no eligible users with WhatsApp opt-in");
       meetLinkSentSessions.add(sessionId);
       return;
     }
 
-    // ── Cap concurrency to avoid Vercel timeout ───────────────────────────────
     const tasks = users.map((user) => async () => {
       const phone = formatPhone(user.phone);
       if (!phone) return null;
 
       const ok = await sendTemplate({
-        phoneNumber: phone,
+        phoneNumber: phone.local,
+        countryCode: phone.countryCode,
         templateName: TEMPLATES.MEET_LINK_READY,
         bodyValues: [
-          firstName(user.name), // {{1}} = first name
-          sessionLabel,          // {{2}} = e.g. "Morning Pranayama"
-          joinUrl,               // {{3}} = direct Google Meet URL
+          firstName(user.name),
+          sessionLabel,
+          joinUrl,
         ],
       });
       return ok;
@@ -559,7 +371,6 @@ export async function onMeetLinkGenerated(
     const failed = results.filter((r) => r === false).length;
     const skipped = results.filter((r) => r === null).length;
 
-    // Mark as notified before logging so a crash-then-retry doesn't re-send
     meetLinkSentSessions.add(sessionId);
 
     log.info(
@@ -567,9 +378,6 @@ export async function onMeetLinkGenerated(
       "[Interakt] onMeetLinkGenerated: complete",
     );
   } catch (err) {
-    log.error(
-      { err, sessionId },
-      "[Interakt] onMeetLinkGenerated threw unexpectedly",
-    );
+    log.error({ err, sessionId }, "[Interakt] onMeetLinkGenerated threw unexpectedly");
   }
 }
