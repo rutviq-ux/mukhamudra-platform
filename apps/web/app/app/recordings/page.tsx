@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@ru/ui";
 import { Film, Lock, Play, Calendar, Loader2 } from "lucide-react";
 import { RecordingAddonCheckout } from "@/components/recording-addon-checkout";
@@ -25,6 +25,11 @@ export default function RecordingsPage() {
   const [noAccess, setNoAccess] = useState(false);
   const [notLoggedIn, setNotLoggedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // NEW: which program tab is active. "All" always exists; program-specific
+  // tabs are derived from whatever the API actually returned, so a user
+  // enrolled in only one program never sees a tab for the other one.
+  const [activeFilter, setActiveFilter] = useState<string>("All");
 
   useEffect(() => {
     let cancelled = false;
@@ -92,6 +97,23 @@ export default function RecordingsPage() {
       cancelled = true;
     };
   }, []);
+
+  // NEW: distinct programs actually present in this user's recordings.
+  // Because /api/recordings already scopes results to the user's active
+  // membership(s), this list can never include a program the user isn't
+  // enrolled in — it's purely a display grouping, not an access check.
+  const availablePrograms = useMemo(
+    () => Array.from(new Set(recordings.map((r) => r.program))).sort(),
+    [recordings],
+  );
+
+  const filteredRecordings = useMemo(
+    () =>
+      activeFilter === "All"
+        ? recordings
+        : recordings.filter((r) => r.program === activeFilter),
+    [recordings, activeFilter],
+  );
 
   if (loading) {
     return (
@@ -179,20 +201,45 @@ export default function RecordingsPage() {
         </div>
         <div className="flex items-center gap-2 text-sm text-[#C4883A]">
           <Film className="w-4 h-4" />
-          <span>{recordings.length} recordings</span>
+          <span>{filteredRecordings.length} recordings</span>
         </div>
       </div>
 
-      {recordings.length === 0 ? (
+      {/* NEW: program filter — only rendered when there's more than one
+          program to choose between, so single-program members never see it */}
+      {availablePrograms.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {["All", ...availablePrograms].map((program) => (
+            <button
+              key={program}
+              type="button"
+              onClick={() => setActiveFilter(program)}
+              className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${
+                activeFilter === program
+                  ? "bg-[#C4883A] text-white border-[#C4883A]"
+                  : "border-[rgba(196,136,58,0.3)] text-muted-foreground hover:text-[#C4883A]"
+              }`}
+            >
+              {program}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {filteredRecordings.length === 0 ? (
         <Card className="void-card text-center py-12">
           <CardContent>
             <Film className="w-10 h-10 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No recordings available yet. New recordings will appear here automatically as your teacher uploads them.</p>
+            <p className="text-muted-foreground">
+              {recordings.length === 0
+                ? "No recordings available yet. New recordings will appear here automatically as your teacher uploads them."
+                : `No ${activeFilter} recordings yet.`}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {recordings.map((recording) => (
+          {filteredRecordings.map((recording) => (
             <Card key={recording.id} className="void-card group">
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-start justify-between gap-2">
