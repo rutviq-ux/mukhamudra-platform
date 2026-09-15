@@ -24,7 +24,7 @@ interface Session {
   meetingId: string | null;
   recordingUrl: string | null;
   capacity: number;
-  batch: { name: string; slug: string; timezone: string } | null;
+  batch: { id: string; name: string; slug: string; timezone: string } | null;
   product: { name: string };
   coach: { id: string; name: string | null; email: string } | null;
   _count: { bookings: number };
@@ -71,7 +71,7 @@ export function SessionTable({ sessions, batches, coaches }: SessionTableProps) 
   const [creating, setCreating] = useState(false);
 
   const filtered = filterBatch
-    ? sessions.filter((s) => s.batch?.slug === filterBatch)
+    ? sessions.filter((s) => s.batch?.id === filterBatch)
     : sessions;
 
   async function handleUpdateStatus(id: string, status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED") {
@@ -246,7 +246,7 @@ export function SessionTable({ sessions, batches, coaches }: SessionTableProps) 
         >
           <option value="">All batches</option>
           {batches.map((b) => (
-            <option key={b.id} value={b.name.toLowerCase().replace(/\s/g, "-")}>
+            <option key={b.id} value={b.id}>
               {b.name}
             </option>
           ))}

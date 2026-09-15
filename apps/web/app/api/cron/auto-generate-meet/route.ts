@@ -10,6 +10,8 @@ import { createSessionMeet } from "@/lib/create-session-meet";
 import { reconcileMeetGroups } from "@/lib/sync-meet-group";
 import { onMeetLinkGenerated } from "@ru/notifications";
 
+export const maxDuration = 60;
+
 const log = createLogger("cron:auto-generate-meet");
 
 async function handler(request: NextRequest) {
@@ -49,6 +51,7 @@ async function handler(request: NextRequest) {
     }
 
     let generated = 0;
+    const generatedSessions: { id: string; meetLink: string }[] = [];
 
     for (const session of sessions) {
       try {
@@ -67,6 +70,10 @@ async function handler(request: NextRequest) {
         });
 
         generated++;
+        generatedSessions.push({
+          id: session.id,
+          meetLink: meetResult.meetLink,
+        });
         log.info({ sessionId: session.id }, "Auto-generated Meet link");
         syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch((err) =>
           log.warn(
@@ -74,11 +81,21 @@ async function handler(request: NextRequest) {
             "Failed to write Join URL to paid-users sheet",
           ),
         );
-        await onMeetLinkGenerated(session.id, meetResult.meetLink);
       } catch (error) {
         log.error(
           { err: error, sessionId: session.id },
           "Failed to auto-generate Meet link for session",
+        );
+      }
+    }
+
+    for (const session of generatedSessions) {
+      try {
+        await onMeetLinkGenerated(session.id, session.meetLink);
+      } catch (err) {
+        log.warn(
+          { err, sessionId: session.id },
+          "Interakt Meet-link notify failed after generate",
         );
       }
     }
@@ -101,3 +118,4 @@ async function handler(request: NextRequest) {
 }
 
 export const POST = withCronAuth(handler);
+export const GET = POST;

@@ -19,7 +19,7 @@ export default async function AdminSessionsPage() {
       orderBy: { startsAt: "asc" },
       take: 100,
       include: {
-        batch: { select: { name: true, slug: true, timezone: true } },
+        batch: { select: { id: true, name: true, slug: true, timezone: true } },
         product: { select: { name: true } },
         coach: { select: { id: true, name: true, email: true } },
         _count: { select: { bookings: true } },
