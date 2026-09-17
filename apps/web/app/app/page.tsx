@@ -316,7 +316,7 @@ export default async function MemberDashboardPage() {
                 </Link>
               ) : (
                 <p className="text-xs text-muted-foreground/70 mt-2">
-                  Opens 15 min before
+                  Opens {CONFIG.JOIN_WINDOW_BEFORE_MIN} min before
                 </p>
               )}
             </>
@@ -537,7 +537,7 @@ export default async function MemberDashboardPage() {
                 <Link href="/app/sessions" className="text-primary hover:underline">
                   sessions page
                 </Link>
-                {" "}15 minutes before class.
+                {` ${CONFIG.JOIN_WINDOW_BEFORE_MIN} minutes before class.`}
               </p>
             </CardContent>
           </Card>
@@ -628,7 +628,7 @@ export default async function MemberDashboardPage() {
                       </Link>
                     ) : (
                       <span className="text-xs text-muted-foreground shrink-0 self-start sm:self-center">
-                        Opens 15 min before
+                        Opens {CONFIG.JOIN_WINDOW_BEFORE_MIN} min before
                       </span>
                     )}
                   </div>

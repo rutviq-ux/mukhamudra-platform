@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Calendar, Sparkles, Users } from "lucide-react";
+import { CONFIG } from "@ru/config";
 import { Card, CardContent } from "@ru/ui";
 import { CalendarDayStrip } from "./calendar-day-strip";
 import { SessionCard, type SerializedSession } from "./session-card";
@@ -81,7 +82,7 @@ export function SessionsCalendar({
               Sessions
             </h1>
             <p className="text-muted-foreground text-sm sm:text-base">
-              Join opens 15 minutes before class.
+              Join opens {CONFIG.JOIN_WINDOW_BEFORE_MIN} minutes before class.
             </p>
           </div>
           <div className="flex gap-2 sm:gap-3">

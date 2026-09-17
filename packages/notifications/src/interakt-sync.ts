@@ -402,7 +402,7 @@ export async function onMembershipExpired(
  * type who have WhatsApp opted in.
  *
  * Callers:
- * - cron/auto-generate-meet/route.ts (T-25 min before class, automatic)
+ * - cron/auto-generate-meet/route.ts (T-45 min before class, automatic)
  * - admin/generate-session-meet/route.ts (manual early generation)
  *
  * @param sessionId Session.id for the upcoming class

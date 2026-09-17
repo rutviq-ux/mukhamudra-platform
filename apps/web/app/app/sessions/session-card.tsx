@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { User, Video } from "lucide-react";
+import { CONFIG } from "@ru/config";
 import { isJoinWindowOpen, joinWindowBounds } from "@/lib/sessions";
 import { SessionTimeDisplay } from "./session-time-display";
 
@@ -137,7 +138,7 @@ export function SessionCard({
         ) : beforeOpen ? (
           <div className="flex flex-col items-end gap-0.5">
             <span className="text-xs text-muted-foreground">
-              Opens 15 min before
+              Opens {CONFIG.JOIN_WINDOW_BEFORE_MIN} min before
             </span>
             {countdown && (
               <span className="text-[10px] text-muted-foreground">

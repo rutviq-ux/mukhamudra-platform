@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@ru/ui";
 import { Video, Clock, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { isJoinWindowOpen } from "@/lib/sessions";
 
 interface JoinWaitingRoomProps {
   sessionId: string;
@@ -50,6 +51,7 @@ export function JoinWaitingRoom({
   const isBeforeSession = diffMs > 0;
   const isSessionOver = now > end;
   const isFaceYoga = productType === "FACE_YOGA";
+  const showJoin = Boolean(joinUrl) && isJoinWindowOpen(start, end, now);
 
   // Tick every second for the countdown
   useEffect(() => {
@@ -148,7 +150,7 @@ export function JoinWaitingRoom({
                 Browse upcoming sessions
               </Link>
             </div>
-          ) : joinUrl ? (
+          ) : showJoin ? (
             /* Ready to join */
             <div className="text-center py-4">
               <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-4">
@@ -160,7 +162,7 @@ export function JoinWaitingRoom({
                   : "Session is live now!"}
               </p>
               <a
-                href={joinUrl}
+                href={joinUrl ?? undefined}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium bg-emerald-500 text-white rounded-full hover:bg-emerald-600 active:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/20"
