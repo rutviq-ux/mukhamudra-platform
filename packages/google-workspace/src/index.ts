@@ -45,6 +45,7 @@ export {
   ensurePaidUsersTab,
   upsertPaidUserRow,
   updatePaidUserJoinUrls,
+  sheetRowNumbersForJoinUrlRecipients,
   ensureLeadsTab,
   upsertLeadRow,
   createSheetsClient,

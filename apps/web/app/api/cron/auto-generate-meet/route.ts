@@ -75,12 +75,14 @@ async function handler(request: NextRequest) {
           meetLink: meetResult.meetLink,
         });
         log.info({ sessionId: session.id }, "Auto-generated Meet link");
-        syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch((err) =>
+        try {
+          await syncSessionJoinUrlToSheet(session, meetResult.meetLink);
+        } catch (err) {
           log.warn(
             { err, sessionId: session.id },
             "Failed to write Join URL to paid-users sheet",
-          ),
-        );
+          );
+        }
       } catch (error) {
         log.error(
           { err: error, sessionId: session.id },

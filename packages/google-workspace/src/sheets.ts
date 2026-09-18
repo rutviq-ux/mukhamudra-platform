@@ -50,6 +50,11 @@ function columnLetter(index: number): string {
   return String.fromCharCode("A".charCodeAt(0) + index);
 }
 
+function a1(tabName: string, range: string): string {
+  const name = tabName.replaceAll("'", "''");
+  return `'${name}'!${range}`;
+}
+
 const PHONE_COL = PAID_USER_SHEET_HEADERS.indexOf("Phone");
 const EMAIL_COL = PAID_USER_SHEET_HEADERS.indexOf("Email");
 const USER_ID_COL = PAID_USER_SHEET_HEADERS.indexOf("User Id");
@@ -152,7 +157,7 @@ export async function ensurePaidUsersTab(
     tabCreated = true;
   }
 
-  const headerRange = `${tabName}!A1:${LAST_COL}1`;
+  const headerRange = a1(tabName, `A1:${LAST_COL}1`);
   const headerResponse = await withRetry(() =>
     sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -191,7 +196,7 @@ export async function upsertPaidUserRow(
   options?: { allowCreate?: boolean },
 ): Promise<UpsertPaidUserRowResult> {
   const allowCreate = options?.allowCreate ?? true;
-  const range = `${tabName}!A:${DATA_LAST_COL}`;
+  const range = a1(tabName, `A:${DATA_LAST_COL}`);
   const response = await withRetry(() =>
     sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -207,7 +212,7 @@ export async function upsertPaidUserRow(
     await withRetry(() =>
       sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `${tabName}!A${matchRowNumber}:${DATA_LAST_COL}${matchRowNumber}`,
+        range: a1(tabName, `A${matchRowNumber}:${DATA_LAST_COL}${matchRowNumber}`),
         valueInputOption: "RAW",
         requestBody: { values },
       }),
@@ -222,7 +227,7 @@ export async function upsertPaidUserRow(
   const appendResponse = await withRetry(() =>
     sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${tabName}!A:${DATA_LAST_COL}`,
+      range: a1(tabName, `A:${DATA_LAST_COL}`),
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values },
@@ -238,53 +243,94 @@ export async function upsertPaidUserRow(
   return { action: "created", rowNumber };
 }
 
+export function sheetRowNumbersForJoinUrlRecipients(
+  idCells: string[][],
+  emailCells: string[][],
+  userIds: string[],
+  emails: string[] = [],
+): number[] {
+  const idSet = new Set(userIds.filter(Boolean));
+  const emailSet = new Set(
+    emails.map((email) => email.trim().toLowerCase()).filter(Boolean),
+  );
+  const rowCount = Math.max(idCells.length, emailCells.length);
+  const matched = new Set<number>();
+
+  for (let i = 0; i < rowCount; i++) {
+    const id = normalizeCell(idCells[i]?.[0]);
+    const email = normalizeCell(emailCells[i]?.[0]).toLowerCase();
+    if ((id && idSet.has(id)) || (email && emailSet.has(email))) {
+      matched.add(i + 2);
+    }
+  }
+
+  return [...matched].sort((a, b) => a - b);
+}
+
 export async function updatePaidUserJoinUrls(
   sheets: sheets_v4.Sheets,
   spreadsheetId: string,
   tabName: string,
   userIds: string[],
   joinUrl: string,
+  emails: string[] = [],
 ): Promise<{ updated: number }> {
   const uniqueIds = [...new Set(userIds.filter(Boolean))];
-  if (uniqueIds.length === 0 || !joinUrl.trim()) {
+  const uniqueEmails = [
+    ...new Set(emails.map((email) => email.trim()).filter(Boolean)),
+  ];
+  if ((uniqueIds.length === 0 && uniqueEmails.length === 0) || !joinUrl.trim()) {
     return { updated: 0 };
   }
 
-  const idSet = new Set(uniqueIds);
-  const range = `${tabName}!A:${LAST_COL}`;
-  const response = await withRetry(() =>
-    sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range,
-    }),
-  );
-
-  const rows = (response.data.values ?? []) as string[][];
+  const idCol = columnLetter(USER_ID_COL);
+  const emailCol = columnLetter(EMAIL_COL);
   const joinColLetter = columnLetter(JOIN_URL_COL);
-  const data: { range: string; values: string[][] }[] = [];
 
-  for (let i = 1; i < rows.length; i++) {
-    const existingUserId = normalizeCell((rows[i] ?? [])[USER_ID_COL]);
-    if (!existingUserId || !idSet.has(existingUserId)) continue;
-    data.push({
-      range: `${tabName}!${joinColLetter}${i + 1}`,
-      values: [[joinUrl]],
-    });
-  }
+  const [idResponse, emailResponse] = await Promise.all([
+    withRetry(() =>
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: a1(tabName, `${idCol}2:${idCol}`),
+      }),
+    ),
+    withRetry(() =>
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: a1(tabName, `${emailCol}2:${emailCol}`),
+      }),
+    ),
+  ]);
 
-  if (data.length === 0) {
+  const rowNumbers = sheetRowNumbersForJoinUrlRecipients(
+    (idResponse.data.values ?? []) as string[][],
+    (emailResponse.data.values ?? []) as string[][],
+    uniqueIds,
+    uniqueEmails,
+  );
+
+  if (rowNumbers.length === 0) {
     return { updated: 0 };
   }
 
-  await withRetry(() =>
-    sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        valueInputOption: "RAW",
-        data,
-      },
-    }),
-  );
+  const data = rowNumbers.map((rowNumber) => ({
+    range: a1(tabName, `${joinColLetter}${rowNumber}`),
+    values: [[joinUrl]],
+  }));
+
+  const chunkSize = 100;
+  for (let i = 0; i < data.length; i += chunkSize) {
+    const chunk = data.slice(i, i + chunkSize);
+    await withRetry(() =>
+      sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: "RAW",
+          data: chunk,
+        },
+      }),
+    );
+  }
 
   return { updated: data.length };
 }

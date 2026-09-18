@@ -154,7 +154,9 @@ export const generateMeetLink = createAdminAction("generateMeetLink", {
     reconcileMeetGroups().catch(() => {});
 
     revalidatePath("/admin/sessions");
-    syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch(() => {});
+    await syncSessionJoinUrlToSheet(session, meetResult.meetLink).catch(
+      () => {},
+    );
     return {
       meetLink: meetResult.meetLink,
       spaceName: meetResult.spaceName,

@@ -9,6 +9,15 @@ import { getPaidUsersSheetConfig } from "@/lib/paid-user-sheet-config";
 
 const log = createLogger("sync-session-join-url");
 
+export function sessionJoinProductTypes(
+  sessionType: "FACE_YOGA" | "PRANAYAMA" | "BUNDLE",
+): Array<"FACE_YOGA" | "PRANAYAMA" | "BUNDLE"> {
+  if (sessionType === "BUNDLE") {
+    return ["BUNDLE", "FACE_YOGA", "PRANAYAMA"];
+  }
+  return [sessionType, "BUNDLE"];
+}
+
 async function getSessionJoinRecipients(session: {
   id: string;
   product: { type: "FACE_YOGA" | "PRANAYAMA" | "BUNDLE" };
@@ -20,7 +29,7 @@ async function getSessionJoinRecipients(session: {
           status: "ACTIVE",
           plan: {
             product: {
-              type: { in: [session.product.type, "BUNDLE"] },
+              type: { in: sessionJoinProductTypes(session.product.type) },
             },
           },
         },
@@ -85,6 +94,42 @@ export async function getSessionMeetAttendeeEmails(session: {
   return emails;
 }
 
+export async function getUpcomingJoinUrlForUser(
+  userId: string,
+): Promise<string | null> {
+  const memberships = await prisma.membership.findMany({
+    where: { userId, status: "ACTIVE" },
+    select: { plan: { select: { product: { select: { type: true } } } } },
+  });
+
+  const types = new Set<"FACE_YOGA" | "PRANAYAMA" | "BUNDLE">();
+  for (const membership of memberships) {
+    const type = membership.plan.product.type;
+    if (type === "BUNDLE") {
+      types.add("BUNDLE");
+      types.add("FACE_YOGA");
+      types.add("PRANAYAMA");
+    } else if (type === "FACE_YOGA" || type === "PRANAYAMA") {
+      types.add(type);
+    }
+  }
+
+  if (types.size === 0) return null;
+
+  const session = await prisma.session.findFirst({
+    where: {
+      status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+      joinUrl: { not: null },
+      endsAt: { gt: new Date() },
+      product: { type: { in: [...types] } },
+    },
+    orderBy: { startsAt: "asc" },
+    select: { joinUrl: true },
+  });
+
+  return session?.joinUrl ?? null;
+}
+
 export async function syncSessionJoinUrlToSheet(
   session: {
     id: string;
@@ -97,8 +142,8 @@ export async function syncSessionJoinUrlToSheet(
     return { status: "disabled" };
   }
 
-  const userIds = await getSessionJoinRecipientIds(session);
-  if (userIds.length === 0) {
+  const recipients = await getSessionJoinRecipients(session);
+  if (recipients.length === 0) {
     return { updated: 0 };
   }
 
@@ -108,12 +153,13 @@ export async function syncSessionJoinUrlToSheet(
     sheets,
     config.spreadsheetId,
     config.tabName,
-    userIds,
+    recipients.map((user) => user.id),
     joinUrl,
+    recipients.map((user) => user.email),
   );
 
   log.info(
-    { sessionId: session.id, updated: result.updated, recipients: userIds.length },
+    { sessionId: session.id, updated: result.updated, recipients: recipients.length },
     "Paid-user Join URL column updated",
   );
 

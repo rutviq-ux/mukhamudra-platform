@@ -4,12 +4,14 @@ import {
   createSheetsClient,
   ensurePaidUsersTab,
   upsertPaidUserRow,
+  updatePaidUserJoinUrls,
 } from "@ru/google-workspace";
 import {
   buildPaidUserSheetRow,
   isClassMembership,
 } from "@/lib/build-paid-user-row";
 import { getPaidUsersSheetConfig } from "@/lib/paid-user-sheet-config";
+import { getUpcomingJoinUrlForUser } from "@/lib/sync-session-join-url";
 
 const log = createLogger("sync-paid-user-sheet");
 
@@ -150,6 +152,18 @@ export async function syncPaidUserToSheet(
   if (result.action === "skipped") {
     log.info({ userId, status: row.status }, "Skipped paid-user sheet sync — no existing row");
     return { status: "skipped_no_row" };
+  }
+
+  const joinUrl = await getUpcomingJoinUrlForUser(userId);
+  if (joinUrl) {
+    await updatePaidUserJoinUrls(
+      sheets,
+      config.spreadsheetId,
+      config.tabName,
+      [userId],
+      joinUrl,
+      [user.email],
+    );
   }
 
   log.info(
