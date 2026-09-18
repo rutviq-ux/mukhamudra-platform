@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { sheetRowNumbersForJoinUrlRecipients } from "@ru/google-workspace";
-import { sessionJoinProductTypes } from "@/lib/sync-session-join-url";
+import {
+  sessionJoinProductTypes,
+  istCalendarDay,
+  isFirstMeetShareOnCalendarDay,
+} from "@/lib/sync-session-join-url";
 
 describe("sessionJoinProductTypes", () => {
   it("includes bundle members on a pranayama session", () => {
@@ -15,6 +19,32 @@ describe("sessionJoinProductTypes", () => {
       "FACE_YOGA",
       "BUNDLE",
     ]);
+  });
+});
+
+describe("istCalendarDay", () => {
+  it("uses the IST calendar date", () => {
+    expect(istCalendarDay(new Date("2026-09-18T16:30:00.000Z"))).toBe(
+      "2026-09-18",
+    );
+  });
+});
+
+describe("isFirstMeetShareOnCalendarDay", () => {
+  it("treats the earlier same-day Face Yoga Meet as the share that already went out", () => {
+    expect(
+      isFirstMeetShareOnCalendarDay(new Date("2026-09-18T16:30:00.000Z"), [
+        { startsAt: new Date("2026-09-18T15:30:00.000Z") },
+      ]),
+    ).toBe(false);
+  });
+
+  it("allows the first class of the IST day to share", () => {
+    expect(
+      isFirstMeetShareOnCalendarDay(new Date("2026-09-18T15:30:00.000Z"), [
+        { startsAt: new Date("2026-09-18T16:30:00.000Z") },
+      ]),
+    ).toBe(true);
   });
 });
 
@@ -51,5 +81,40 @@ describe("sheetRowNumbersForJoinUrlRecipients", () => {
         ["BUNDLE@example.com"],
       ),
     ).toEqual([3]);
+  });
+
+  it("does not overwrite a row that already has a different Meet URL", () => {
+    const idCells = [["user_9pm"], ["user_10pm"]];
+    const existingJoinUrls = [
+      ["https://meet.google.com/aaa-bbbb-ccc"],
+      [""],
+    ];
+
+    expect(
+      sheetRowNumbersForJoinUrlRecipients(
+        idCells,
+        [],
+        ["user_9pm", "user_10pm"],
+        [],
+        existingJoinUrls,
+        "https://meet.google.com/xxx-yyyy-zzz",
+      ),
+    ).toEqual([3]);
+  });
+
+  it("still updates a row whose Join URL is already this Meet", () => {
+    const idCells = [["user_9pm"]];
+    const existingJoinUrls = [["https://meet.google.com/aaa-bbbb-ccc"]];
+
+    expect(
+      sheetRowNumbersForJoinUrlRecipients(
+        idCells,
+        [],
+        ["user_9pm"],
+        [],
+        existingJoinUrls,
+        "https://meet.google.com/aaa-bbbb-ccc",
+      ),
+    ).toEqual([2]);
   });
 });

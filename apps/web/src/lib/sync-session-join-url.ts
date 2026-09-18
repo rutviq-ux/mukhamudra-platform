@@ -130,6 +130,48 @@ export async function getUpcomingJoinUrlForUser(
   return session?.joinUrl ?? null;
 }
 
+export function istCalendarDay(date: Date): string {
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+export function istDayUtcBounds(date: Date): { gte: Date; lt: Date } {
+  const day = istCalendarDay(date);
+  const gte = new Date(`${day}T00:00:00+05:30`);
+  return { gte, lt: new Date(gte.getTime() + 24 * 60 * 60 * 1000) };
+}
+
+export function isFirstMeetShareOnCalendarDay(
+  startsAt: Date,
+  others: { startsAt: Date }[],
+): boolean {
+  const day = istCalendarDay(startsAt);
+  return !others.some(
+    (other) =>
+      istCalendarDay(other.startsAt) === day &&
+      other.startsAt.getTime() < startsAt.getTime(),
+  );
+}
+
+export async function isFirstMeetShareOfProductDay(session: {
+  id: string;
+  startsAt: Date;
+  product: { type: "FACE_YOGA" | "PRANAYAMA" | "BUNDLE" };
+}): Promise<boolean> {
+  const { gte, lt } = istDayUtcBounds(session.startsAt);
+  const others = await prisma.session.findMany({
+    where: {
+      id: { not: session.id },
+      joinUrl: { not: null },
+      status: { not: "CANCELLED" },
+      startsAt: { gte, lt },
+      product: { type: session.product.type },
+    },
+    select: { startsAt: true },
+  });
+
+  return isFirstMeetShareOnCalendarDay(session.startsAt, others);
+}
+
 export async function syncSessionJoinUrlToSheet(
   session: {
     id: string;

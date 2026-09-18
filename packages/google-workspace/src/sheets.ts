@@ -248,6 +248,8 @@ export function sheetRowNumbersForJoinUrlRecipients(
   emailCells: string[][],
   userIds: string[],
   emails: string[] = [],
+  existingJoinUrls: string[][] = [],
+  joinUrl?: string,
 ): number[] {
   const idSet = new Set(userIds.filter(Boolean));
   const emailSet = new Set(
@@ -259,9 +261,10 @@ export function sheetRowNumbersForJoinUrlRecipients(
   for (let i = 0; i < rowCount; i++) {
     const id = normalizeCell(idCells[i]?.[0]);
     const email = normalizeCell(emailCells[i]?.[0]).toLowerCase();
-    if ((id && idSet.has(id)) || (email && emailSet.has(email))) {
-      matched.add(i + 2);
-    }
+    if (!(id && idSet.has(id)) && !(email && emailSet.has(email))) continue;
+    const existing = normalizeCell(existingJoinUrls[i]?.[0]);
+    if (existing && joinUrl && existing !== joinUrl) continue;
+    matched.add(i + 2);
   }
 
   return [...matched].sort((a, b) => a - b);
@@ -287,7 +290,7 @@ export async function updatePaidUserJoinUrls(
   const emailCol = columnLetter(EMAIL_COL);
   const joinColLetter = columnLetter(JOIN_URL_COL);
 
-  const [idResponse, emailResponse] = await Promise.all([
+  const [idResponse, emailResponse, joinResponse] = await Promise.all([
     withRetry(() =>
       sheets.spreadsheets.values.get({
         spreadsheetId,
@@ -300,6 +303,12 @@ export async function updatePaidUserJoinUrls(
         range: a1(tabName, `${emailCol}2:${emailCol}`),
       }),
     ),
+    withRetry(() =>
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: a1(tabName, `${joinColLetter}2:${joinColLetter}`),
+      }),
+    ),
   ]);
 
   const rowNumbers = sheetRowNumbersForJoinUrlRecipients(
@@ -307,6 +316,8 @@ export async function updatePaidUserJoinUrls(
     (emailResponse.data.values ?? []) as string[][],
     uniqueIds,
     uniqueEmails,
+    (joinResponse.data.values ?? []) as string[][],
+    joinUrl,
   );
 
   if (rowNumbers.length === 0) {

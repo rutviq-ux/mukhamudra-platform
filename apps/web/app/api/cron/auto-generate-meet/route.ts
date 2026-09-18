@@ -5,7 +5,7 @@ import { withCronAuth } from "@/lib/cron-auth";
 import { getGoogleConfig } from "@/lib/google-config";
 import { getConfig } from "@/lib/config";
 import { clearReusedBatchMeetingLinks } from "@/lib/clear-reused-meet-links";
-import { syncSessionJoinUrlToSheet } from "@/lib/sync-session-join-url";
+import { syncSessionJoinUrlToSheet, isFirstMeetShareOfProductDay } from "@/lib/sync-session-join-url";
 import { createSessionMeet } from "@/lib/create-session-meet";
 import { reconcileMeetGroups } from "@/lib/sync-meet-group";
 import { onMeetLinkGenerated } from "@ru/notifications";
@@ -30,14 +30,16 @@ async function handler(request: NextRequest) {
     const now = new Date();
     const config = await getConfig();
     const generateBeforeMin = config.MEET_GENERATE_BEFORE_MIN;
+    const joinAfterMin = config.JOIN_WINDOW_AFTER_MIN;
     const generateBefore = new Date(now.getTime() + generateBeforeMin * 60 * 1000);
+    const joinWindowClose = new Date(now.getTime() - joinAfterMin * 60 * 1000);
 
     const sessions = await prisma.session.findMany({
       where: {
         status: { in: ["SCHEDULED", "IN_PROGRESS"] },
         joinUrl: null,
         startsAt: { lte: generateBefore },
-        endsAt: { gt: now },
+        endsAt: { gt: joinWindowClose },
       },
       include: {
         product: { select: { name: true, type: true } },
@@ -51,7 +53,12 @@ async function handler(request: NextRequest) {
     }
 
     let generated = 0;
-    const generatedSessions: { id: string; meetLink: string }[] = [];
+    const generatedSessions: {
+      id: string;
+      startsAt: Date;
+      meetLink: string;
+      product: { type: "FACE_YOGA" | "PRANAYAMA" | "BUNDLE" };
+    }[] = [];
 
     for (const session of sessions) {
       try {
@@ -72,7 +79,9 @@ async function handler(request: NextRequest) {
         generated++;
         generatedSessions.push({
           id: session.id,
+          startsAt: session.startsAt,
           meetLink: meetResult.meetLink,
+          product: { type: session.product.type },
         });
         log.info({ sessionId: session.id }, "Auto-generated Meet link");
         try {
@@ -93,6 +102,15 @@ async function handler(request: NextRequest) {
 
     for (const session of generatedSessions) {
       try {
+        if (
+          !(await isFirstMeetShareOfProductDay({
+            id: session.id,
+            startsAt: session.startsAt,
+            product: session.product,
+          }))
+        ) {
+          continue;
+        }
         await onMeetLinkGenerated(session.id, session.meetLink);
       } catch (err) {
         log.warn(
