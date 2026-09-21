@@ -198,6 +198,7 @@ export async function syncSessionJoinUrlToSheet(
     recipients.map((user) => user.id),
     joinUrl,
     recipients.map((user) => user.email),
+    true,
   );
 
   log.info(

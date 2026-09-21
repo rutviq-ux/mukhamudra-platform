@@ -48,10 +48,6 @@ async function handler(request: NextRequest) {
       orderBy: { startsAt: "asc" },
     });
 
-    if (sessions.length === 0) {
-      return NextResponse.json({ status: "ok", generated: 0, cleared });
-    }
-
     let generated = 0;
     const generatedSessions: {
       id: string;
@@ -84,18 +80,48 @@ async function handler(request: NextRequest) {
           product: { type: session.product.type },
         });
         log.info({ sessionId: session.id }, "Auto-generated Meet link");
-        try {
-          await syncSessionJoinUrlToSheet(session, meetResult.meetLink);
-        } catch (err) {
-          log.warn(
-            { err, sessionId: session.id },
-            "Failed to write Join URL to paid-users sheet",
-          );
-        }
       } catch (error) {
         log.error(
           { err: error, sessionId: session.id },
           "Failed to auto-generate Meet link for session",
+        );
+      }
+    }
+
+    const sheetSessions = await prisma.session.findMany({
+      where: {
+        status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+        joinUrl: { not: null },
+        startsAt: { lte: generateBefore },
+        endsAt: { gt: joinWindowClose },
+      },
+      include: {
+        product: { select: { type: true } },
+      },
+      orderBy: { startsAt: "asc" },
+    });
+
+    const latestByProductType = new Map<
+      "FACE_YOGA" | "PRANAYAMA" | "BUNDLE",
+      (typeof sheetSessions)[number]
+    >();
+    for (const session of sheetSessions) {
+      if (!session.joinUrl) continue;
+      const current = latestByProductType.get(session.product.type);
+      if (!current || session.startsAt.getTime() > current.startsAt.getTime()) {
+        latestByProductType.set(session.product.type, session);
+      }
+    }
+
+    for (const session of latestByProductType.values()) {
+      const joinUrl = session.joinUrl;
+      if (!joinUrl) continue;
+      try {
+        await syncSessionJoinUrlToSheet(session, joinUrl);
+      } catch (err) {
+        log.warn(
+          { err, sessionId: session.id },
+          "Failed to write Join URL to paid-users sheet",
         );
       }
     }

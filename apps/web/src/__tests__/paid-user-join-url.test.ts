@@ -83,7 +83,7 @@ describe("sheetRowNumbersForJoinUrlRecipients", () => {
     ).toEqual([3]);
   });
 
-  it("does not overwrite a row that already has a different Meet URL", () => {
+  it("does not overwrite a different Meet URL unless overwrite is requested", () => {
     const idCells = [["user_9pm"], ["user_10pm"]];
     const existingJoinUrls = [
       ["https://meet.google.com/aaa-bbbb-ccc"],
@@ -102,7 +102,28 @@ describe("sheetRowNumbersForJoinUrlRecipients", () => {
     ).toEqual([3]);
   });
 
-  it("still updates a row whose Join URL is already this Meet", () => {
+  it("replaces stale Meet URLs for every class when overwrite is on", () => {
+    const idCells = [["user_8am"], ["user_empty"], ["user_9am"]];
+    const existingJoinUrls = [
+      ["https://meet.google.com/kam-bxu-esm"],
+      [""],
+      ["https://meet.google.com/hjd-ekoo-smx"],
+    ];
+
+    expect(
+      sheetRowNumbersForJoinUrlRecipients(
+        idCells,
+        [],
+        ["user_8am", "user_empty", "user_9am"],
+        [],
+        existingJoinUrls,
+        "https://meet.google.com/hjd-ekoo-smx",
+        true,
+      ),
+    ).toEqual([2, 3]);
+  });
+
+  it("does not rewrite a row whose Join URL is already this Meet", () => {
     const idCells = [["user_9pm"]];
     const existingJoinUrls = [["https://meet.google.com/aaa-bbbb-ccc"]];
 
@@ -115,6 +136,6 @@ describe("sheetRowNumbersForJoinUrlRecipients", () => {
         existingJoinUrls,
         "https://meet.google.com/aaa-bbbb-ccc",
       ),
-    ).toEqual([2]);
+    ).toEqual([]);
   });
 });

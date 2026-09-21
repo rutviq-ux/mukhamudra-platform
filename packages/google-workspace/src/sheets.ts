@@ -250,6 +250,7 @@ export function sheetRowNumbersForJoinUrlRecipients(
   emails: string[] = [],
   existingJoinUrls: string[][] = [],
   joinUrl?: string,
+  overwriteExisting = false,
 ): number[] {
   const idSet = new Set(userIds.filter(Boolean));
   const emailSet = new Set(
@@ -263,7 +264,10 @@ export function sheetRowNumbersForJoinUrlRecipients(
     const email = normalizeCell(emailCells[i]?.[0]).toLowerCase();
     if (!(id && idSet.has(id)) && !(email && emailSet.has(email))) continue;
     const existing = normalizeCell(existingJoinUrls[i]?.[0]);
-    if (existing && joinUrl && existing !== joinUrl) continue;
+    if (joinUrl && existing === joinUrl) continue;
+    if (!overwriteExisting && existing && joinUrl && existing !== joinUrl) {
+      continue;
+    }
     matched.add(i + 2);
   }
 
@@ -277,6 +281,7 @@ export async function updatePaidUserJoinUrls(
   userIds: string[],
   joinUrl: string,
   emails: string[] = [],
+  overwriteExisting = false,
 ): Promise<{ updated: number }> {
   const uniqueIds = [...new Set(userIds.filter(Boolean))];
   const uniqueEmails = [
@@ -318,6 +323,7 @@ export async function updatePaidUserJoinUrls(
     uniqueEmails,
     (joinResponse.data.values ?? []) as string[][],
     joinUrl,
+    overwriteExisting,
   );
 
   if (rowNumbers.length === 0) {
