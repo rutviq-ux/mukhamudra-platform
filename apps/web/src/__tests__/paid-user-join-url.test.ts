@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sheetRowNumbersForJoinUrlRecipients } from "@ru/google-workspace";
-import {
-  sessionJoinProductTypes,
-  istCalendarDay,
-  isFirstMeetShareOnCalendarDay,
-} from "@/lib/sync-session-join-url";
+import { sessionJoinProductTypes } from "@/lib/sync-session-join-url";
 
 describe("sessionJoinProductTypes", () => {
   it("includes bundle members on a pranayama session", () => {
@@ -19,32 +15,6 @@ describe("sessionJoinProductTypes", () => {
       "FACE_YOGA",
       "BUNDLE",
     ]);
-  });
-});
-
-describe("istCalendarDay", () => {
-  it("uses the IST calendar date", () => {
-    expect(istCalendarDay(new Date("2026-09-18T16:30:00.000Z"))).toBe(
-      "2026-09-18",
-    );
-  });
-});
-
-describe("isFirstMeetShareOnCalendarDay", () => {
-  it("treats the earlier same-day Face Yoga Meet as the share that already went out", () => {
-    expect(
-      isFirstMeetShareOnCalendarDay(new Date("2026-09-18T16:30:00.000Z"), [
-        { startsAt: new Date("2026-09-18T15:30:00.000Z") },
-      ]),
-    ).toBe(false);
-  });
-
-  it("allows the first class of the IST day to share", () => {
-    expect(
-      isFirstMeetShareOnCalendarDay(new Date("2026-09-18T15:30:00.000Z"), [
-        { startsAt: new Date("2026-09-18T16:30:00.000Z") },
-      ]),
-    ).toBe(true);
   });
 });
 

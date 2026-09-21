@@ -5,7 +5,7 @@ import { withCronAuth } from "@/lib/cron-auth";
 import { getGoogleConfig } from "@/lib/google-config";
 import { getConfig } from "@/lib/config";
 import { clearReusedBatchMeetingLinks } from "@/lib/clear-reused-meet-links";
-import { syncSessionJoinUrlToSheet, isFirstMeetShareOfProductDay } from "@/lib/sync-session-join-url";
+import { syncSessionJoinUrlToSheet } from "@/lib/sync-session-join-url";
 import { createSessionMeet } from "@/lib/create-session-meet";
 import { reconcileMeetGroups } from "@/lib/sync-meet-group";
 import { onMeetLinkGenerated } from "@ru/notifications";
@@ -49,12 +49,7 @@ async function handler(request: NextRequest) {
     });
 
     let generated = 0;
-    const generatedSessions: {
-      id: string;
-      startsAt: Date;
-      meetLink: string;
-      product: { type: "FACE_YOGA" | "PRANAYAMA" | "BUNDLE" };
-    }[] = [];
+    const generatedSessions: { id: string; meetLink: string }[] = [];
 
     for (const session of sessions) {
       try {
@@ -75,9 +70,7 @@ async function handler(request: NextRequest) {
         generated++;
         generatedSessions.push({
           id: session.id,
-          startsAt: session.startsAt,
           meetLink: meetResult.meetLink,
-          product: { type: session.product.type },
         });
         log.info({ sessionId: session.id }, "Auto-generated Meet link");
       } catch (error) {
@@ -128,15 +121,6 @@ async function handler(request: NextRequest) {
 
     for (const session of generatedSessions) {
       try {
-        if (
-          !(await isFirstMeetShareOfProductDay({
-            id: session.id,
-            startsAt: session.startsAt,
-            product: session.product,
-          }))
-        ) {
-          continue;
-        }
         await onMeetLinkGenerated(session.id, session.meetLink);
       } catch (err) {
         log.warn(
