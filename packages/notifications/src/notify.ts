@@ -224,6 +224,17 @@ export async function notifyPaymentSuccess(opts: {
     amount: opts.amount,
   };
 
+  // Select plan-specific email template based on which program was purchased
+    const planLower = opts.planName.toLowerCase();
+    let emailTemplateName = "payment_success"; // fallback for unknown plans
+    if (planLower.includes("face yoga + pranayama") || planLower.includes("bundle")) {
+          emailTemplateName = "payment_success_bundle";
+    } else if (planLower.includes("face yoga")) {
+          emailTemplateName = "payment_success_face_yoga";
+    } else if (planLower.includes("pranayama")) {
+          emailTemplateName = "payment_success_pranayama";
+    }
+  
   await Promise.all([
     queueNotification({
       userId: opts.userId,
@@ -232,7 +243,7 @@ export async function notifyPaymentSuccess(opts: {
     }),
     queueNotification({
       userId: opts.userId,
-      templateName: "payment_success",
+      templateName: emailTemplateName,
       variables,
     }),
   ]);
