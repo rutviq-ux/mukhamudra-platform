@@ -471,27 +471,34 @@ async function handleSubscriptionActivated(payload: any) {
 
   // Send notification
   const isBundle = membership.plan.product.type === "BUNDLE";
+  // Collect email-queuing promises so we can await both before flushing.
+  // This mirrors the fix in handlePaymentCaptured and prevents the same race.
+  const emailPromises: Promise<void>[] = [];
 
   if (isBundle && currentPeriodEnd) {
-    notifyBundleWelcome({
-      userId: membership.userId,
-      periodEnd: currentPeriodEnd,
-    }).catch((err) =>
-      log.error({ err }, "Failed to queue bundle welcome notification"),
+    emailPromises.push(
+      notifyBundleWelcome({
+        userId: membership.userId,
+        periodEnd: currentPeriodEnd,
+      }).catch((err) =>
+        log.error({ err }, "Failed to queue bundle welcome notification"),
+      ),
     );
   } else {
-    notifySubscriptionActivated({
-      userId: membership.userId,
-      planName: membership.plan.name,
-      endDate: currentPeriodEnd
-        ? currentPeriodEnd.toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })
-        : "Ongoing",
-    }).catch((err) =>
-      log.error({ err }, "Failed to queue subscription activated notification"),
+    emailPromises.push(
+      notifySubscriptionActivated({
+        userId: membership.userId,
+        planName: membership.plan.name,
+        endDate: currentPeriodEnd
+          ? currentPeriodEnd.toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })
+          : "Ongoing",
+      }).catch((err) =>
+        log.error({ err }, "Failed to queue subscription activated notification"),
+      ),
     );
   }
 
@@ -543,18 +550,20 @@ async function handleSubscriptionActivated(payload: any) {
   );
 
   // Send membership activation email
-  notifyMembershipActivatedEmail({
-    userId: membership.userId,
-    planName: membership.plan.name,
-    endDate: currentPeriodEnd
-      ? currentPeriodEnd.toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })
-      : "Ongoing",
-  }).catch((err) =>
-    log.error({ err }, "Failed to queue membership activated email"),
+  emailPromises.push(
+    notifyMembershipActivatedEmail({
+      userId: membership.userId,
+      planName: membership.plan.name,
+      endDate: currentPeriodEnd
+        ? currentPeriodEnd.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })
+        : "Ongoing",
+    }).catch((err) =>
+      log.error({ err }, "Failed to queue membership activated email"),
+    ),
   );
 
   // ─── Send enrollment WhatsApp template ───
@@ -596,6 +605,13 @@ async function handleSubscriptionActivated(payload: any) {
       { err, userId: membership.userId },
       "Failed to sync paid-user sheet",
     ),
+  );
+
+  // Must await all email-queuing before flushing — prevents the race condition
+  // that also affected handlePaymentCaptured.
+  await Promise.allSettled(emailPromises);
+  flushQueuedEmailsForUser(membership.userId).catch((err) =>
+    log.error({ err }, "Failed to flush subscription activation emails"),
   );
 }
 
@@ -724,7 +740,7 @@ async function handleSubscriptionCancelled(payload: any) {
   );
 
   // Send membership cancellation email
-  notifyMembershipCancelledEmail({
+  await notifyMembershipCancelledEmail({
     userId: membership.userId,
     planName: membership.plan.name,
     endDate: membership.periodEnd
@@ -736,6 +752,9 @@ async function handleSubscriptionCancelled(payload: any) {
       : "N/A",
   }).catch((err) =>
     log.error({ err }, "Failed to queue membership cancelled email"),
+  );
+  flushQueuedEmailsForUser(membership.userId).catch((err) =>
+    log.error({ err }, "Failed to flush cancellation email"),
   );
 
   syncPaidUserToSheet(membership.userId).catch((err) =>
@@ -763,7 +782,7 @@ async function handlePaymentFailed(payload: any) {
     });
 
     if (order) {
-      notifyPaymentFailed({
+      await notifyPaymentFailed({
         userId: order.userId,
         orderId: order.id,
         planName: order.plan.name,
@@ -772,6 +791,9 @@ async function handlePaymentFailed(payload: any) {
           payment.error_description || payment.error_reason || "Payment failed",
       }).catch((err) =>
         log.error({ err }, "Failed to queue payment failed notification"),
+      );
+      flushQueuedEmailsForUser(order.userId).catch((err) =>
+        log.error({ err }, "Failed to flush payment failed email"),
       );
     }
   }
