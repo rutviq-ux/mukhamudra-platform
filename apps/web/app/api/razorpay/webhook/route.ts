@@ -288,26 +288,30 @@ async function handlePaymentCaptured(payload: any) {
       include: { plan: { include: { product: true } } },
     });
     if (order) {
-      notifyPaymentSuccess({
-        userId: order.userId,
-        orderId: order.id,
-        planName: order.plan.name,
-        amount: (order.amountPaise / 100).toLocaleString("en-IN"),
-      }).catch((err) =>
-        log.error({ err }, "Failed to queue payment confirmation notification"),
-      );
-
-      notifyMembershipActivatedEmail({
-        userId: order.userId,
-        planName: order.plan.name,
-        endDate: result.periodEnd.toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }),
-      }).catch((err) =>
-        log.error({ err }, "Failed to queue membership activated email"),
-      );
+      // Must await both before calling flushQueuedEmailsForUser.
+      // They write to MessageLog and the flush reads from it; without
+      // awaiting, the flush races ahead and finds nothing to send.
+      await Promise.allSettled([
+        notifyPaymentSuccess({
+          userId: order.userId,
+          orderId: order.id,
+          planName: order.plan.name,
+          amount: (order.amountPaise / 100).toLocaleString("en-IN"),
+        }).catch((err) =>
+          log.error({ err }, "Failed to queue payment confirmation notification"),
+        ),
+        notifyMembershipActivatedEmail({
+          userId: order.userId,
+          planName: order.plan.name,
+          endDate: result.periodEnd.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+        }).catch((err) =>
+          log.error({ err }, "Failed to queue membership activated email"),
+        ),
+      ]);
 
       // Queue WhatsApp group adds
       const user = await prisma.user.findUnique({
