@@ -1138,6 +1138,525 @@ async function main() {
     },
   });
 
+
+  await prisma.messageTemplate.upsert({
+    where: { name: "payment_success_face_yoga" },
+    update: {
+      subject: "Welcome to Mukha Mudra Face Yoga! 🌸",
+      body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Payment Confirmed – Face Yoga</title>
+<style>
+  body{margin:0;padding:0;background:#fdf8f4;font-family:Georgia,serif;color:#3b2a1a}
+  .wrap{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+  .header{background:#c8785a;padding:36px 32px;text-align:center}
+  .header h1{margin:0;color:#fff;font-size:26px;letter-spacing:1px}
+  .header p{margin:8px 0 0;color:#fde9df;font-size:14px}
+  .body{padding:32px}
+  .cta-box{background:#fdf1ec;border-left:4px solid #c8785a;padding:20px 24px;border-radius:6px;margin:24px 0;font-size:18px;font-weight:bold;color:#c8785a}
+  .section{margin:24px 0}
+  .section h2{font-size:16px;color:#c8785a;margin-bottom:8px;border-bottom:1px solid #f3e0d8;padding-bottom:6px}
+  .section p,.section li{font-size:14px;line-height:1.7;color:#5a3e2b}
+  ul{padding-left:20px;margin:8px 0}
+  .amazon-box{background:#fff8f0;border:1px solid #e8d0c0;border-radius:8px;padding:16px 20px;margin:16px 0}
+  .amazon-box p{margin:4px 0;font-size:14px}
+  .amazon-box a{color:#c8785a;text-decoration:none;font-weight:bold}
+  .footer{background:#fdf1ec;padding:20px 32px;text-align:center;font-size:12px;color:#8a6a55}
+  .footer a{color:#c8785a;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Mukha Mudra</h1>
+    <p>Face Yoga &amp; Wellness</p>
+  </div>
+  <div class="body">
+    <p>Dear {{name}},</p>
+    <p>Your payment of <strong>₹{{amount}}</strong> for <strong>{{plan_name}}</strong> has been confirmed (Order: {{order_id}}). We are so happy to have you with us! 🌸</p>
+
+    <div class="cta-box">
+      👉 JOIN THE WHATSAPP GROUP NOW:<br/>
+      <a href="https://chat.whatsapp.com/LVI2v7bE9cVKIOzSd2Qx2n?mode=gi_t" style="color:#c8785a">Face Yoga Community Group</a>
+    </div>
+
+    <div class="section">
+      <h2>Your Class Schedule</h2>
+      <ul>
+        <li><strong>Face Yoga</strong> — Mon, Wed, Fri: 9:00 PM &amp; 10:00 PM IST</li>
+      </ul>
+      <p>Session links are shared in the WhatsApp group before every class.</p>
+    </div>
+
+    <div class="section">
+      <h2>Recommended Face Yoga Tools</h2>
+      <p>For the best experience, we recommend having these with you:</p>
+      <div class="amazon-box">
+        <p>🪡 <a href="https://www.amazon.in/dp/B09NWM7T4K">Gua Sha Stone</a></p>
+        <p>🌿 <a href="https://www.amazon.in/dp/B07QHVWPFW">Facial Massage Roller</a></p>
+      </div>
+      <p style="font-size:12px;color:#8a6a55">(These are optional but highly recommended for better results.)</p>
+    </div>
+
+    <div class="section">
+      <h2>How to Join Class</h2>
+      <p>Log in at <a href="https://www.mukhamudra.com/app" style="color:#c8785a">mukhamudra.com/app</a> to access your dashboard. The Google Meet link will be shared in the WhatsApp group 10 minutes before class.</p>
+    </div>
+
+    <p>We will reach out to you on WhatsApp shortly to welcome you personally. If you have any questions, just reply to this email or message us in the group.</p>
+
+    <p>With love &amp; light,<br/><strong>Ru &amp; the Mukha Mudra Team</strong> 🙏</p>
+  </div>
+  <div class="footer">
+    <p>© Mukha Mudra | <a href="https://www.mukhamudra.com">mukhamudra.com</a></p>
+    <p>Questions? Email us at hello@mukhamudra.com</p>
+  </div>
+</div>
+</body>
+</html>`,
+      isTransactional: true,
+    },
+    create: {
+      channel: "EMAIL",
+      name: "payment_success_face_yoga",
+      subject: "Welcome to Mukha Mudra Face Yoga! 🌸",
+      body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Payment Confirmed – Face Yoga</title>
+<style>
+  body{margin:0;padding:0;background:#fdf8f4;font-family:Georgia,serif;color:#3b2a1a}
+  .wrap{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+  .header{background:#c8785a;padding:36px 32px;text-align:center}
+  .header h1{margin:0;color:#fff;font-size:26px;letter-spacing:1px}
+  .header p{margin:8px 0 0;color:#fde9df;font-size:14px}
+  .body{padding:32px}
+  .cta-box{background:#fdf1ec;border-left:4px solid #c8785a;padding:20px 24px;border-radius:6px;margin:24px 0;font-size:18px;font-weight:bold;color:#c8785a}
+  .section{margin:24px 0}
+  .section h2{font-size:16px;color:#c8785a;margin-bottom:8px;border-bottom:1px solid #f3e0d8;padding-bottom:6px}
+  .section p,.section li{font-size:14px;line-height:1.7;color:#5a3e2b}
+  ul{padding-left:20px;margin:8px 0}
+  .amazon-box{background:#fff8f0;border:1px solid #e8d0c0;border-radius:8px;padding:16px 20px;margin:16px 0}
+  .amazon-box p{margin:4px 0;font-size:14px}
+  .amazon-box a{color:#c8785a;text-decoration:none;font-weight:bold}
+  .footer{background:#fdf1ec;padding:20px 32px;text-align:center;font-size:12px;color:#8a6a55}
+  .footer a{color:#c8785a;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Mukha Mudra</h1>
+    <p>Face Yoga &amp; Wellness</p>
+  </div>
+  <div class="body">
+    <p>Dear {{name}},</p>
+    <p>Your payment of <strong>₹{{amount}}</strong> for <strong>{{plan_name}}</strong> has been confirmed (Order: {{order_id}}). We are so happy to have you with us! 🌸</p>
+
+    <div class="cta-box">
+      👉 JOIN THE WHATSAPP GROUP NOW:<br/>
+      <a href="https://chat.whatsapp.com/LVI2v7bE9cVKIOzSd2Qx2n?mode=gi_t" style="color:#c8785a">Face Yoga Community Group</a>
+    </div>
+
+    <div class="section">
+      <h2>Your Class Schedule</h2>
+      <ul>
+        <li><strong>Face Yoga</strong> — Mon, Wed, Fri: 9:00 PM &amp; 10:00 PM IST</li>
+      </ul>
+      <p>Session links are shared in the WhatsApp group before every class.</p>
+    </div>
+
+    <div class="section">
+      <h2>Recommended Face Yoga Tools</h2>
+      <p>For the best experience, we recommend having these with you:</p>
+      <div class="amazon-box">
+        <p>🪡 <a href="https://www.amazon.in/dp/B09NWM7T4K">Gua Sha Stone</a></p>
+        <p>🌿 <a href="https://www.amazon.in/dp/B07QHVWPFW">Facial Massage Roller</a></p>
+      </div>
+      <p style="font-size:12px;color:#8a6a55">(These are optional but highly recommended for better results.)</p>
+    </div>
+
+    <div class="section">
+      <h2>How to Join Class</h2>
+      <p>Log in at <a href="https://www.mukhamudra.com/app" style="color:#c8785a">mukhamudra.com/app</a> to access your dashboard. The Google Meet link will be shared in the WhatsApp group 10 minutes before class.</p>
+    </div>
+
+    <p>We will reach out to you on WhatsApp shortly to welcome you personally. If you have any questions, just reply to this email or message us in the group.</p>
+
+    <p>With love &amp; light,<br/><strong>Ru &amp; the Mukha Mudra Team</strong> 🙏</p>
+  </div>
+  <div class="footer">
+    <p>© Mukha Mudra | <a href="https://www.mukhamudra.com">mukhamudra.com</a></p>
+    <p>Questions? Email us at hello@mukhamudra.com</p>
+  </div>
+</div>
+</body>
+</html>`,
+      variables: ["name", "order_id", "plan_name", "amount"],
+      isActive: true,
+      isTransactional: true,
+    },
+  });
+
+  await prisma.messageTemplate.upsert({
+    where: { name: "payment_success_pranayama" },
+    update: {
+      subject: "Welcome to Mukha Mudra Pranayama! 🌬️",
+      body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Payment Confirmed – Pranayama</title>
+<style>
+  body{margin:0;padding:0;background:#f4f8fd;font-family:Georgia,serif;color:#1a2a3b}
+  .wrap{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+  .header{background:#5a78c8;padding:36px 32px;text-align:center}
+  .header h1{margin:0;color:#fff;font-size:26px;letter-spacing:1px}
+  .header p{margin:8px 0 0;color:#dde7fd;font-size:14px}
+  .body{padding:32px}
+  .cta-box{background:#ecf0fd;border-left:4px solid #5a78c8;padding:20px 24px;border-radius:6px;margin:24px 0;font-size:18px;font-weight:bold;color:#5a78c8}
+  .section{margin:24px 0}
+  .section h2{font-size:16px;color:#5a78c8;margin-bottom:8px;border-bottom:1px solid #d8e0f3;padding-bottom:6px}
+  .section p,.section li{font-size:14px;line-height:1.7;color:#2b3e5a}
+  ul{padding-left:20px;margin:8px 0}
+  .warning-box{background:#fff8e6;border:1px solid #f0d080;border-radius:8px;padding:16px 20px;margin:16px 0}
+  .warning-box p{margin:4px 0;font-size:14px;color:#6b5000}
+  .footer{background:#ecf0fd;padding:20px 32px;text-align:center;font-size:12px;color:#5a6880}
+  .footer a{color:#5a78c8;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Mukha Mudra</h1>
+    <p>Pranayama &amp; Breathwork</p>
+  </div>
+  <div class="body">
+    <p>Dear {{name}},</p>
+    <p>Your payment of <strong>₹{{amount}}</strong> for <strong>{{plan_name}}</strong> has been confirmed (Order: {{order_id}}). Welcome to your breathwork journey! 🌬️</p>
+
+    <div class="cta-box">
+      👉 JOIN THE WHATSAPP GROUP NOW:<br/>
+      <a href="https://chat.whatsapp.com/EeBbe161zXKIKchWCEDwlS?mode=gi_t" style="color:#5a78c8">Pranayama Community Group</a>
+    </div>
+
+    <div class="section">
+      <h2>Your Class Schedule</h2>
+      <ul>
+        <li><strong>Pranayama</strong> — Mon, Wed, Fri: 8:00 AM &amp; 9:00 AM IST</li>
+      </ul>
+      <p>Session links are shared in the WhatsApp group before every class.</p>
+    </div>
+
+    <div class="section">
+      <h2>⚠️ Important: Please Attend on an Empty Stomach</h2>
+      <div class="warning-box">
+        <p>🌅 <strong>Morning sessions:</strong> Please have your last meal at least <strong>2–3 hours before class</strong>.</p>
+        <p>Practising pranayama on a full stomach can cause discomfort. Water is fine to drink before class.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>How to Join Class</h2>
+      <p>Log in at <a href="https://www.mukhamudra.com/app" style="color:#5a78c8">mukhamudra.com/app</a> to access your dashboard. The Google Meet link will be shared in the WhatsApp group 10 minutes before class.</p>
+    </div>
+
+    <p>We will reach out to you on WhatsApp shortly to welcome you personally. If you have any questions, just reply to this email or message us in the group.</p>
+
+    <p>With love &amp; light,<br/><strong>Ru &amp; the Mukha Mudra Team</strong> 🙏</p>
+  </div>
+  <div class="footer">
+    <p>© Mukha Mudra | <a href="https://www.mukhamudra.com">mukhamudra.com</a></p>
+    <p>Questions? Email us at hello@mukhamudra.com</p>
+  </div>
+</div>
+</body>
+</html>`,
+      isTransactional: true,
+    },
+    create: {
+      channel: "EMAIL",
+      name: "payment_success_pranayama",
+      subject: "Welcome to Mukha Mudra Pranayama! 🌬️",
+      body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Payment Confirmed – Pranayama</title>
+<style>
+  body{margin:0;padding:0;background:#f4f8fd;font-family:Georgia,serif;color:#1a2a3b}
+  .wrap{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+  .header{background:#5a78c8;padding:36px 32px;text-align:center}
+  .header h1{margin:0;color:#fff;font-size:26px;letter-spacing:1px}
+  .header p{margin:8px 0 0;color:#dde7fd;font-size:14px}
+  .body{padding:32px}
+  .cta-box{background:#ecf0fd;border-left:4px solid #5a78c8;padding:20px 24px;border-radius:6px;margin:24px 0;font-size:18px;font-weight:bold;color:#5a78c8}
+  .section{margin:24px 0}
+  .section h2{font-size:16px;color:#5a78c8;margin-bottom:8px;border-bottom:1px solid #d8e0f3;padding-bottom:6px}
+  .section p,.section li{font-size:14px;line-height:1.7;color:#2b3e5a}
+  ul{padding-left:20px;margin:8px 0}
+  .warning-box{background:#fff8e6;border:1px solid #f0d080;border-radius:8px;padding:16px 20px;margin:16px 0}
+  .warning-box p{margin:4px 0;font-size:14px;color:#6b5000}
+  .footer{background:#ecf0fd;padding:20px 32px;text-align:center;font-size:12px;color:#5a6880}
+  .footer a{color:#5a78c8;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Mukha Mudra</h1>
+    <p>Pranayama &amp; Breathwork</p>
+  </div>
+  <div class="body">
+    <p>Dear {{name}},</p>
+    <p>Your payment of <strong>₹{{amount}}</strong> for <strong>{{plan_name}}</strong> has been confirmed (Order: {{order_id}}). Welcome to your breathwork journey! 🌬️</p>
+
+    <div class="cta-box">
+      👉 JOIN THE WHATSAPP GROUP NOW:<br/>
+      <a href="https://chat.whatsapp.com/EeBbe161zXKIKchWCEDwlS?mode=gi_t" style="color:#5a78c8">Pranayama Community Group</a>
+    </div>
+
+    <div class="section">
+      <h2>Your Class Schedule</h2>
+      <ul>
+        <li><strong>Pranayama</strong> — Mon, Wed, Fri: 8:00 AM &amp; 9:00 AM IST</li>
+      </ul>
+      <p>Session links are shared in the WhatsApp group before every class.</p>
+    </div>
+
+    <div class="section">
+      <h2>⚠️ Important: Please Attend on an Empty Stomach</h2>
+      <div class="warning-box">
+        <p>🌅 <strong>Morning sessions:</strong> Please have your last meal at least <strong>2–3 hours before class</strong>.</p>
+        <p>Practising pranayama on a full stomach can cause discomfort. Water is fine to drink before class.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>How to Join Class</h2>
+      <p>Log in at <a href="https://www.mukhamudra.com/app" style="color:#5a78c8">mukhamudra.com/app</a> to access your dashboard. The Google Meet link will be shared in the WhatsApp group 10 minutes before class.</p>
+    </div>
+
+    <p>We will reach out to you on WhatsApp shortly to welcome you personally. If you have any questions, just reply to this email or message us in the group.</p>
+
+    <p>With love &amp; light,<br/><strong>Ru &amp; the Mukha Mudra Team</strong> 🙏</p>
+  </div>
+  <div class="footer">
+    <p>© Mukha Mudra | <a href="https://www.mukhamudra.com">mukhamudra.com</a></p>
+    <p>Questions? Email us at hello@mukhamudra.com</p>
+  </div>
+</div>
+</body>
+</html>`,
+      variables: ["name", "order_id", "plan_name", "amount"],
+      isActive: true,
+      isTransactional: true,
+    },
+  });
+
+  await prisma.messageTemplate.upsert({
+    where: { name: "payment_success_bundle" },
+    update: {
+      subject: "Welcome to Mukha Mudra — Full Bundle! 🌸🌬️",
+      body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Payment Confirmed – Bundle</title>
+<style>
+  body{margin:0;padding:0;background:#fdf6f0;font-family:Georgia,serif;color:#2a1f15}
+  .wrap{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+  .header{background:linear-gradient(135deg,#c8785a 0%,#5a78c8 100%);padding:36px 32px;text-align:center}
+  .header h1{margin:0;color:#fff;font-size:26px;letter-spacing:1px}
+  .header p{margin:8px 0 0;color:#f0e8ff;font-size:14px}
+  .body{padding:32px}
+  .cta-box{padding:20px 24px;border-radius:6px;margin:24px 0;font-size:16px;font-weight:bold}
+  .cta-fy{background:#fdf1ec;border-left:4px solid #c8785a;color:#c8785a;margin-bottom:12px}
+  .cta-pr{background:#ecf0fd;border-left:4px solid #5a78c8;color:#5a78c8}
+  .section{margin:24px 0}
+  .section h2{font-size:16px;color:#5a3e2b;margin-bottom:8px;border-bottom:1px solid #ecddd4;padding-bottom:6px}
+  .section p,.section li{font-size:14px;line-height:1.7;color:#4a3525}
+  ul{padding-left:20px;margin:8px 0}
+  .amazon-box{background:#fff8f0;border:1px solid #e8d0c0;border-radius:8px;padding:16px 20px;margin:16px 0}
+  .amazon-box p{margin:4px 0;font-size:14px}
+  .amazon-box a{color:#c8785a;text-decoration:none;font-weight:bold}
+  .warning-box{background:#fff8e6;border:1px solid #f0d080;border-radius:8px;padding:16px 20px;margin:16px 0}
+  .warning-box p{margin:4px 0;font-size:14px;color:#6b5000}
+  .footer{background:#f5ece4;padding:20px 32px;text-align:center;font-size:12px;color:#8a6a55}
+  .footer a{color:#c8785a;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Mukha Mudra</h1>
+    <p>Face Yoga &amp; Pranayama — Full Bundle</p>
+  </div>
+  <div class="body">
+    <p>Dear {{name}},</p>
+    <p>Your payment of <strong>₹{{amount}}</strong> for <strong>{{plan_name}}</strong> has been confirmed (Order: {{order_id}}). You now have access to our complete wellness experience! 🌸🌬️</p>
+
+    <div class="cta-box cta-fy">
+      👉 JOIN FACE YOGA WHATSAPP GROUP:<br/>
+      <a href="https://chat.whatsapp.com/LVI2v7bE9cVKIOzSd2Qx2n?mode=gi_t" style="color:#c8785a">Face Yoga Community Group</a>
+    </div>
+    <div class="cta-box cta-pr">
+      👉 JOIN PRANAYAMA WHATSAPP GROUP:<br/>
+      <a href="https://chat.whatsapp.com/EeBbe161zXKIKchWCEDwlS?mode=gi_t" style="color:#5a78c8">Pranayama Community Group</a>
+    </div>
+
+    <div class="section">
+      <h2>Your Complete Class Schedule</h2>
+      <ul>
+        <li><strong>Face Yoga</strong> — Mon, Wed, Fri: 9:00 PM &amp; 10:00 PM IST</li>
+        <li><strong>Pranayama</strong> — Mon, Wed, Fri: 8:00 AM &amp; 9:00 AM IST</li>
+      </ul>
+      <p>Session links are shared in the respective WhatsApp groups before every class.</p>
+    </div>
+
+    <div class="section">
+      <h2>Recommended Face Yoga Tools</h2>
+      <div class="amazon-box">
+        <p>🪡 <a href="https://www.amazon.in/dp/B09NWM7T4K">Gua Sha Stone</a></p>
+        <p>🌿 <a href="https://www.amazon.in/dp/B07QHVWPFW">Facial Massage Roller</a></p>
+      </div>
+      <p style="font-size:12px;color:#8a6a55">(Optional but highly recommended for better results.)</p>
+    </div>
+
+    <div class="section">
+      <h2>⚠️ Pranayama: Please Attend on an Empty Stomach</h2>
+      <div class="warning-box">
+        <p>🌅 <strong>Morning sessions:</strong> Please have your last meal at least <strong>2–3 hours before class</strong>.</p>
+        <p>Practising pranayama on a full stomach can cause discomfort. Water is fine to drink before class.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>How to Join Class</h2>
+      <p>Log in at <a href="https://www.mukhamudra.com/app" style="color:#c8785a">mukhamudra.com/app</a> to access your dashboard. Google Meet links are shared in the WhatsApp groups 10 minutes before each class.</p>
+    </div>
+
+    <p>We will reach out to you on WhatsApp shortly to welcome you personally. If you have any questions, just reply to this email or message us in either group.</p>
+
+    <p>With love &amp; light,<br/><strong>Ru &amp; the Mukha Mudra Team</strong> 🙏</p>
+  </div>
+  <div class="footer">
+    <p>© Mukha Mudra | <a href="https://www.mukhamudra.com">mukhamudra.com</a></p>
+    <p>Questions? Email us at hello@mukhamudra.com</p>
+  </div>
+</div>
+</body>
+</html>`,
+      isTransactional: true,
+    },
+    create: {
+      channel: "EMAIL",
+      name: "payment_success_bundle",
+      subject: "Welcome to Mukha Mudra — Full Bundle! 🌸🌬️",
+      body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Payment Confirmed – Bundle</title>
+<style>
+  body{margin:0;padding:0;background:#fdf6f0;font-family:Georgia,serif;color:#2a1f15}
+  .wrap{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+  .header{background:linear-gradient(135deg,#c8785a 0%,#5a78c8 100%);padding:36px 32px;text-align:center}
+  .header h1{margin:0;color:#fff;font-size:26px;letter-spacing:1px}
+  .header p{margin:8px 0 0;color:#f0e8ff;font-size:14px}
+  .body{padding:32px}
+  .cta-box{padding:20px 24px;border-radius:6px;margin:24px 0;font-size:16px;font-weight:bold}
+  .cta-fy{background:#fdf1ec;border-left:4px solid #c8785a;color:#c8785a;margin-bottom:12px}
+  .cta-pr{background:#ecf0fd;border-left:4px solid #5a78c8;color:#5a78c8}
+  .section{margin:24px 0}
+  .section h2{font-size:16px;color:#5a3e2b;margin-bottom:8px;border-bottom:1px solid #ecddd4;padding-bottom:6px}
+  .section p,.section li{font-size:14px;line-height:1.7;color:#4a3525}
+  ul{padding-left:20px;margin:8px 0}
+  .amazon-box{background:#fff8f0;border:1px solid #e8d0c0;border-radius:8px;padding:16px 20px;margin:16px 0}
+  .amazon-box p{margin:4px 0;font-size:14px}
+  .amazon-box a{color:#c8785a;text-decoration:none;font-weight:bold}
+  .warning-box{background:#fff8e6;border:1px solid #f0d080;border-radius:8px;padding:16px 20px;margin:16px 0}
+  .warning-box p{margin:4px 0;font-size:14px;color:#6b5000}
+  .footer{background:#f5ece4;padding:20px 32px;text-align:center;font-size:12px;color:#8a6a55}
+  .footer a{color:#c8785a;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Mukha Mudra</h1>
+    <p>Face Yoga &amp; Pranayama — Full Bundle</p>
+  </div>
+  <div class="body">
+    <p>Dear {{name}},</p>
+    <p>Your payment of <strong>₹{{amount}}</strong> for <strong>{{plan_name}}</strong> has been confirmed (Order: {{order_id}}). You now have access to our complete wellness experience! 🌸🌬️</p>
+
+    <div class="cta-box cta-fy">
+      👉 JOIN FACE YOGA WHATSAPP GROUP:<br/>
+      <a href="https://chat.whatsapp.com/LVI2v7bE9cVKIOzSd2Qx2n?mode=gi_t" style="color:#c8785a">Face Yoga Community Group</a>
+    </div>
+    <div class="cta-box cta-pr">
+      👉 JOIN PRANAYAMA WHATSAPP GROUP:<br/>
+      <a href="https://chat.whatsapp.com/EeBbe161zXKIKchWCEDwlS?mode=gi_t" style="color:#5a78c8">Pranayama Community Group</a>
+    </div>
+
+    <div class="section">
+      <h2>Your Complete Class Schedule</h2>
+      <ul>
+        <li><strong>Face Yoga</strong> — Mon, Wed, Fri: 9:00 PM &amp; 10:00 PM IST</li>
+        <li><strong>Pranayama</strong> — Mon, Wed, Fri: 8:00 AM &amp; 9:00 AM IST</li>
+      </ul>
+      <p>Session links are shared in the respective WhatsApp groups before every class.</p>
+    </div>
+
+    <div class="section">
+      <h2>Recommended Face Yoga Tools</h2>
+      <div class="amazon-box">
+        <p>🪡 <a href="https://www.amazon.in/dp/B09NWM7T4K">Gua Sha Stone</a></p>
+        <p>🌿 <a href="https://www.amazon.in/dp/B07QHVWPFW">Facial Massage Roller</a></p>
+      </div>
+      <p style="font-size:12px;color:#8a6a55">(Optional but highly recommended for better results.)</p>
+    </div>
+
+    <div class="section">
+      <h2>⚠️ Pranayama: Please Attend on an Empty Stomach</h2>
+      <div class="warning-box">
+        <p>🌅 <strong>Morning sessions:</strong> Please have your last meal at least <strong>2–3 hours before class</strong>.</p>
+        <p>Practising pranayama on a full stomach can cause discomfort. Water is fine to drink before class.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>How to Join Class</h2>
+      <p>Log in at <a href="https://www.mukhamudra.com/app" style="color:#c8785a">mukhamudra.com/app</a> to access your dashboard. Google Meet links are shared in the WhatsApp groups 10 minutes before each class.</p>
+    </div>
+
+    <p>We will reach out to you on WhatsApp shortly to welcome you personally. If you have any questions, just reply to this email or message us in either group.</p>
+
+    <p>With love &amp; light,<br/><strong>Ru &amp; the Mukha Mudra Team</strong> 🙏</p>
+  </div>
+  <div class="footer">
+    <p>© Mukha Mudra | <a href="https://www.mukhamudra.com">mukhamudra.com</a></p>
+    <p>Questions? Email us at hello@mukhamudra.com</p>
+  </div>
+</div>
+</body>
+</html>`,
+      variables: ["name", "order_id", "plan_name", "amount"],
+      isActive: true,
+      isTransactional: true,
+    },
+  });
+
   await prisma.messageTemplate.upsert({
     where: { name: "booking_confirmed_email" },
     update: {
