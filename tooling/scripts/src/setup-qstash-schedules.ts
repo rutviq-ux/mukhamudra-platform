@@ -133,21 +133,20 @@ async function createSchedule(schedule: (typeof SCHEDULES)[number]) {
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${QSTASH_TOKEN}`,
-    "Content-Type": "application/json",
     "Upstash-Cron": schedule.cron,
+    "Upstash-Method": "POST",
   };
   if (CRON_SECRET) {
     headers["Upstash-Forward-Authorization"] = `Bearer ${CRON_SECRET}`;
   }
 
-  const res = await fetch("https://qstash-us-east-1.upstash.io/v2/schedules", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      destination: url,
+  const res = await fetch(
+    `https://qstash-us-east-1.upstash.io/v2/schedules/${url}`,
+    {
       method: "POST",
-    }),
-  });
+      headers,
+    },
+  );
 
   if (!res.ok) {
     const err = await res.text();
