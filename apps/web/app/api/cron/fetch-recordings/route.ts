@@ -97,7 +97,9 @@ async function handler(request: NextRequest) {
   }
 }
 
+export const dynamic = "force-dynamic";
 export const POST = withCronAuth(handler);
+export const GET = POST;
 
 /**
  * Notify users who booked this session AND have active recording access.

@@ -11,6 +11,7 @@ import { reconcileMeetGroups } from "@/lib/sync-meet-group";
 import { onMeetLinkGenerated } from "@ru/notifications";
 
 export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 const log = createLogger("cron:auto-generate-meet");
 

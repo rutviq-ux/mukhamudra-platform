@@ -93,13 +93,15 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks(.*)",
 ]);
 
+const isCronRoute = createRouteMatcher(["/api/cron(.*)"]);
 const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
 const isApiRoute = createRouteMatcher(["/api/:path*"]);
 
-// ============================================================================
-// Proxy (Next.js 16 middleware replacement)
-// ============================================================================
 export default clerkMiddleware(async (auth, request) => {
+  if (isCronRoute(request)) {
+    return NextResponse.next();
+  }
+
   const origin = request.headers.get("origin");
   const corsHeaders = corsHeadersForOrigin(origin);
 

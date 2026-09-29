@@ -369,14 +369,30 @@ export async function sendSessionReminders(): Promise<number> {
       if (user) recipients.set(user.id, user);
     }
 
+    const reminderSince = new Date(now.getTime() - 60 * 60_000);
+    const reminderKey = `session-reminder:${session.id}`;
+
     for (const user of recipients.values()) {
       const name = user.name?.split(" ")[0] || "there";
+      const alreadySent = await prisma.messageLog.findFirst({
+        where: {
+          userId: user.id,
+          createdAt: { gte: reminderSince },
+          status: { in: ["QUEUED", "SENT", "DELIVERED"] },
+          OR: [
+            { body: { contains: reminderKey } },
+            { body: { contains: `/app/join/${session.id}` } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (alreadySent) continue;
 
       if (user.phone && user.whatsappOptIn) {
         await sendWhatsApp({
           userId: user.id,
           phone: user.phone,
-          body: "",
+          body: reminderKey,
           templateName: "mukhamudra_class_reminder",
           templateParams: [name, sessionType, dashboardUrl],
         });

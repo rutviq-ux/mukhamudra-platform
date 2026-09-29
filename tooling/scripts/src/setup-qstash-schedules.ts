@@ -10,12 +10,21 @@
  */
 
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
-const APP_URL = process.env.APP_URL;
+const APP_URL = process.env.APP_URL
+  ? (() => {
+      const url = new URL(process.env.APP_URL);
+      if (url.hostname === "mukhamudra.com") {
+        url.hostname = "www.mukhamudra.com";
+      }
+      return url.origin;
+    })()
+  : undefined;
+const CRON_SECRET = process.env.CRON_SECRET;
 
 if (!QSTASH_TOKEN || !APP_URL) {
   console.error("Missing QSTASH_TOKEN or APP_URL environment variables.");
   console.error(
-    "Usage: QSTASH_TOKEN=... APP_URL=https://your-app.vercel.app npx tsx src/setup-qstash-schedules.ts"
+    "Usage: QSTASH_TOKEN=... APP_URL=https://www.mukhamudra.com npx tsx src/setup-qstash-schedules.ts"
   );
   process.exit(1);
 }
@@ -122,13 +131,18 @@ async function deleteSchedule(scheduleId: string) {
 async function createSchedule(schedule: (typeof SCHEDULES)[number]) {
   const url = `${APP_URL}${schedule.path}`;
 
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${QSTASH_TOKEN}`,
+    "Content-Type": "application/json",
+    "Upstash-Cron": schedule.cron,
+  };
+  if (CRON_SECRET) {
+    headers["Upstash-Forward-Authorization"] = `Bearer ${CRON_SECRET}`;
+  }
+
   const res = await fetch("https://qstash-us-east-1.upstash.io/v2/schedules", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${QSTASH_TOKEN}`,
-      "Content-Type": "application/json",
-      "Upstash-Cron": schedule.cron,
-    },
+    headers,
     body: JSON.stringify({
       destination: url,
       method: "POST",
@@ -150,8 +164,12 @@ async function main() {
 
   // List existing schedules for this app
   const existing = await listExistingSchedules();
+  const origins = new Set([APP_URL!]);
+  const appHost = new URL(APP_URL!).hostname;
+  if (appHost === "www.mukhamudra.com") origins.add("https://mukhamudra.com");
+  if (appHost === "mukhamudra.com") origins.add("https://www.mukhamudra.com");
   const appSchedules = existing.filter((s) =>
-    s.destination?.startsWith(APP_URL!)
+    [...origins].some((origin) => s.destination?.startsWith(origin))
   );
 
   if (appSchedules.length > 0) {
