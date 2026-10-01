@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma, prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
-import { queueNotification, logMessage } from "@ru/notifications";
+import { queueNotification, logMessage, isNotificationChannelEnabled } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
 import { leadPhoneKey } from "@/lib/leads";
 
@@ -93,6 +93,9 @@ async function handler(request: NextRequest) {
 
     for (const broadcast of broadcasts) {
       if (!broadcast.template.isActive) {
+        continue;
+      }
+      if (!(await isNotificationChannelEnabled(broadcast.template.channel))) {
         continue;
       }
       const segment = broadcast.segment as SegmentFilter;

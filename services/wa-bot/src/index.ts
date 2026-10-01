@@ -23,7 +23,7 @@ import type { Client as WhatsAppClient } from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
 import { prisma } from "@ru/db";
 import { CONFIG, createLogger } from "@ru/config";
-import { checkRateLimit, updateMessageStatus } from "@ru/notifications";
+import { checkRateLimit, updateMessageStatus, isNotificationChannelEnabled } from "@ru/notifications";
 
 const log = createLogger("wa-bot");
 
@@ -744,6 +744,8 @@ function startMessageProcessor(client: WhatsAppClient): void {
     if (isShuttingDown || clientDead) return;
 
     try {
+      if (!(await isNotificationChannelEnabled("WHATSAPP"))) return;
+
       const rateLimitConfig = await getRateLimitConfig();
 
       const queuedMessages = await prisma.messageLog.findMany({

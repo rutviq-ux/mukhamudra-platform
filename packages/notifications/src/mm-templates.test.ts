@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   firstName,
+  isMmMessageTemplate,
   joinTemplateForStartTime,
   meetCodeFromJoinUrl,
   programLabel,
@@ -56,6 +57,14 @@ describe("programLabel", () => {
     expect(programLabel("FACE_YOGA")).toBe("Face Yoga");
     expect(programLabel("PRANAYAMA")).toBe("Pranayama");
     expect(programLabel("BUNDLE")).toBe("Face Yoga and Pranayama");
+  });
+});
+
+describe("isMmMessageTemplate", () => {
+  it("marks the new notices and leaves older templates alone", () => {
+    expect(isMmMessageTemplate("mm_join_pranayama_8am")).toBe(true);
+    expect(isMmMessageTemplate("mm_welcome_face_yoga_email")).toBe(true);
+    expect(isMmMessageTemplate("payment_success")).toBe(false);
   });
 });
 

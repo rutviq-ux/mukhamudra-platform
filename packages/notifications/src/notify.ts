@@ -4,17 +4,20 @@
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { logMessage } from "./audit";
+import { isNotificationChannelEnabled } from "./channel-gates";
 import { sendPushForMessageLog } from "./send-push";
 import { sendWhatsApp } from "./send-whatsapp";
 import {
   deliverInteraktTemplate,
   ensureMmEmailTemplates,
+  newNoticesEnabled,
   prePaymentImageUrl,
 } from "./mm-messages";
 import {
   MM,
   firstName,
   formatInDate,
+  isMmMessageTemplate,
   joinTemplateForStartTime,
   meetCodeFromJoinUrl,
   programLabel,
@@ -61,7 +64,15 @@ export async function queueNotification({
     log.warn({ templateName }, "Message template not found — notification skipped");
     return null;
   }
-  if (!template.isActive) {
+  const followsBatchReminders = isMmMessageTemplate(templateName);
+  if (!followsBatchReminders && !(await isNotificationChannelEnabled(template.channel))) {
+    log.info(
+      { templateName, channel: template.channel },
+      "Notification channel disabled",
+    );
+    return null;
+  }
+  if (!followsBatchReminders && !template.isActive) {
     log.warn({ templateName }, "Message template is inactive — notification skipped");
     return null;
   }
@@ -346,12 +357,12 @@ export async function sendSessionReminders(): Promise<number> {
     process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com";
 
   for (const session of sessions) {
-    if (session.batch && !session.batch.remindersEnabled) {
+    const batchRemindersOn = !session.batch || session.batch.remindersEnabled;
+    if (!batchRemindersOn) {
       log.info(
         { sessionId: session.id, batchId: session.batchId },
-        "Skipping reminders, disabled on batch",
+        "Skipping new class notices, disabled on batch",
       );
-      continue;
     }
 
     const sessionType = session.batch?.name || session.title || "Yoga";
@@ -393,7 +404,13 @@ export async function sendSessionReminders(): Promise<number> {
       });
       if (alreadySent) continue;
 
-      if (canSendJoin && templateName && meetCode && session.joinUrl) {
+      if (
+        batchRemindersOn &&
+        canSendJoin &&
+        templateName &&
+        meetCode &&
+        session.joinUrl
+      ) {
         let waSent = false;
         if (user.phone && user.whatsappOptIn) {
           waSent = await deliverInteraktTemplate({
@@ -681,6 +698,16 @@ export async function sendPlanWelcome(opts: {
   const templateName = welcomeTemplateForSlug(opts.planSlug);
   if (!templateName) return;
 
+  const productTypes = opts.planSlug.startsWith("face-")
+    ? ["FACE_YOGA"]
+    : opts.planSlug.startsWith("pranayama-")
+      ? ["PRANAYAMA"]
+      : ["FACE_YOGA", "PRANAYAMA"];
+  if (!(await newNoticesEnabled(productTypes))) {
+    log.info({ planSlug: opts.planSlug }, "Skipping plan welcome, batch reminders disabled");
+    return;
+  }
+
   await ensureMmEmailTemplates();
 
   const since = new Date(Date.now() - 24 * 60 * 60_000);
@@ -732,6 +759,11 @@ export async function sendPrePaymentNotice(opts: {
   userId?: string;
   profileName?: string | null;
 }): Promise<boolean> {
+  if (!(await newNoticesEnabled())) {
+    log.info("Skipping pre-payment notice, batch reminders disabled");
+    return false;
+  }
+
   const imageUrl = prePaymentImageUrl();
   if (!imageUrl) {
     log.warn("Skipping pre-payment WhatsApp, WHATSAPP_PREPAYMENT_IMAGE_URL is not set");
@@ -780,11 +812,15 @@ export async function notifyNoLiveSession(sessionId: string): Promise<void> {
           where: { status: "CONFIRMED" },
           include: { user: { select: { id: true } } },
         },
-        batch: { select: { name: true } },
+        batch: { select: { name: true, remindersEnabled: true } },
         product: { select: { type: true } },
       },
     });
     if (!session) return;
+    if (session.batch && !session.batch.remindersEnabled) {
+      log.info({ sessionId }, "Skipping no-live-session notices, disabled on batch");
+      return;
+    }
 
     const sessionType = session.batch?.name || session.title || "class";
     const date = formatInDate(session.startsAt);
@@ -832,6 +868,12 @@ export async function sendRenewalReminders(): Promise<number> {
   let sent = 0;
   for (const membership of memberships) {
     if (!membership.periodEnd) continue;
+    const productTypes =
+      membership.plan.product.type === "BUNDLE"
+        ? ["FACE_YOGA", "PRANAYAMA"]
+        : [membership.plan.product.type];
+    if (!(await newNoticesEnabled(productTypes))) continue;
+
     const marker = `${MM.RENEWAL}:${membership.id}`;
     const alreadySent = await prisma.messageLog.findFirst({
       where: {

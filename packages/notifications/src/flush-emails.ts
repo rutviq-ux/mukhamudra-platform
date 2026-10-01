@@ -6,6 +6,8 @@
 import { prisma } from "@ru/db";
 import { getServerEnv } from "@ru/config";
 import { updateMessageStatus, failDisabledTemplateMessage, isTemplateDisabled } from "./audit";
+import { isNotificationChannelEnabled } from "./channel-gates";
+import { isMmMessageTemplate } from "./mm-templates";
 import {
   ResendEmailProvider,
   ListmonkEmailProvider,
@@ -37,17 +39,20 @@ function resolveEmailProvider(): EmailProvider {
  * never double-sends if the cron races it.
  */
 export async function flushQueuedEmailsForUser(userId: string): Promise<void> {
+  const emailEnabled = await isNotificationChannelEnabled("EMAIL");
   const provider = resolveEmailProvider();
 
   const messages = await prisma.messageLog.findMany({
     where: { userId, channel: "EMAIL", status: "QUEUED" },
-    include: { template: { select: { isActive: true } } },
+    include: { template: { select: { name: true, isActive: true } } },
     orderBy: { createdAt: "asc" },
     take: 20,
   });
 
   for (const msg of messages) {
-    if (isTemplateDisabled(msg.template)) {
+    const mmMessage = isMmMessageTemplate(msg.template?.name);
+    if (!mmMessage && !emailEnabled) continue;
+    if (!mmMessage && isTemplateDisabled(msg.template)) {
       await failDisabledTemplateMessage(msg.id);
       continue;
     }

@@ -67,11 +67,32 @@ export function prePaymentImageUrl(): string | null {
   return url || null;
 }
 
+export async function newNoticesEnabled(
+  productTypes?: string[],
+): Promise<boolean> {
+  const batches = await prisma.batch.findMany({
+    where: {
+      isActive: true,
+      ...(productTypes && productTypes.length > 0
+        ? { product: { type: { in: productTypes as never } } }
+        : {}),
+    },
+    select: { remindersEnabled: true },
+  });
+  if (batches.length === 0) return true;
+  return batches.some((batch) => batch.remindersEnabled);
+}
+
 export async function sendTrialClassNotice(opts: {
   rawPhone: string;
   name?: string | null;
   userId?: string;
 }): Promise<boolean> {
+  if (!(await newNoticesEnabled())) {
+    log.info("Skipping trial class WhatsApp, batch reminders disabled");
+    return false;
+  }
+
   const parsed = formatPhone(opts.rawPhone);
   if (!parsed) {
     log.warn("Skipping trial class WhatsApp, phone unusable");

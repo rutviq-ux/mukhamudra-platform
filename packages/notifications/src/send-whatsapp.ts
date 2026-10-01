@@ -9,6 +9,7 @@ import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { WhatsAppBusinessProvider } from "./providers/whatsapp";
 import { logMessage } from "./audit";
+import { isNotificationChannelEnabled } from "./channel-gates";
 
 const log = createLogger("send-whatsapp");
 
@@ -33,6 +34,22 @@ export async function sendWhatsApp(opts: {
   templateName?: string;
   templateParams?: string[];
 }): Promise<void> {
+  if (!(await isNotificationChannelEnabled("WHATSAPP"))) {
+    log.info({ to: opts.phone }, "WhatsApp channel disabled");
+    return;
+  }
+
+  if (opts.templateName) {
+    const template = await prisma.messageTemplate.findUnique({
+      where: { name: opts.templateName },
+      select: { isActive: true },
+    });
+    if (template && !template.isActive) {
+      log.info({ templateName: opts.templateName }, "WhatsApp template inactive");
+      return;
+    }
+  }
+
   const cloud = getCloudProvider();
 
   if (cloud) {

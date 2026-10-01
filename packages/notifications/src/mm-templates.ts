@@ -18,6 +18,25 @@ const DASHBOARD_URL = "https://www.mukhamudra.com/app";
 const GUA_SHA_URL = "https://www.amazon.in/dp/B09NWM7T4K";
 const ROLLER_URL = "https://www.amazon.in/dp/B07QHVWPFW";
 
+const MM_MESSAGE_NAMES = new Set<string>([
+  ...Object.values(MM),
+  "mm_pre_payment_info_email",
+  "mm_welcome_face_yoga_email",
+  "mm_welcome_pranayama_email",
+  "mm_welcome_bundle_email",
+  "mm_join_pranayama_8am_email",
+  "mm_join_pranayama_9am_email",
+  "mm_join_face_yoga_9pm_email",
+  "mm_join_face_yoga_10pm_email",
+  "mm_no_live_session_email",
+  "mm_renewal_email",
+  "mm_trial_class_email",
+]);
+
+export function isMmMessageTemplate(name: string | null | undefined): boolean {
+  return Boolean(name && MM_MESSAGE_NAMES.has(name));
+}
+
 export function firstName(fullName: string | null | undefined): string {
   const trimmed = fullName?.trim();
   if (!trimmed) return "there";

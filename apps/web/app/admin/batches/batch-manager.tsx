@@ -654,6 +654,9 @@ export function BatchManager({ batches, products }: BatchManagerProps) {
             Send class reminders
           </Label>
         </div>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Off stops the new class notices for this batch. Older messages are switched on the Messages page.
+        </p>
 
         {/* Submit */}
         <div className="flex gap-2">

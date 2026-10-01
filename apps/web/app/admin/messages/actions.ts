@@ -3,18 +3,42 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@ru/db";
-import { messageTemplateSchema, sendTestMessageSchema, getServerEnv } from "@ru/config";
+import { messageTemplateSchema, sendTestMessageSchema, notificationChannelsSchema, getServerEnv } from "@ru/config";
 import { createAdminAction } from "@/lib/actions/safe-action";
 import {
   ResendEmailProvider,
   ListmonkEmailProvider,
   ConsoleEmailProvider,
   logMessage,
+  isNotificationChannelEnabled,
+  NOTIFICATION_CHANNELS_KEY,
   type EmailProvider,
 } from "@ru/notifications";
 
 const updateTemplateSchema = messageTemplateSchema.extend({ id: z.string().cuid() });
 const deleteTemplateSchema = z.object({ id: z.string().cuid() });
+
+export const updateNotificationChannels = createAdminAction(
+  "updateNotificationChannels",
+  {
+    schema: notificationChannelsSchema,
+    audit: {
+      action: "notification.channels.update",
+      targetType: "Setting",
+      getTargetId: () => NOTIFICATION_CHANNELS_KEY,
+      getMetadata: (data) => data,
+    },
+    handler: async ({ data }) => {
+      const setting = await prisma.setting.upsert({
+        where: { key: NOTIFICATION_CHANNELS_KEY },
+        update: { value: data },
+        create: { key: NOTIFICATION_CHANNELS_KEY, value: data },
+      });
+      revalidatePath("/admin/messages");
+      return setting;
+    },
+  },
+);
 
 export const createTemplate = createAdminAction("createTemplate", {
   schema: messageTemplateSchema,
@@ -152,6 +176,10 @@ export const sendTestMessage = createAdminAction("sendTestMessage", {
 
     if (template.channel !== channel) {
       throw new Error("Template channel mismatch");
+    }
+
+    if (!(await isNotificationChannelEnabled(channel))) {
+      throw new Error(`${channel} sending is turned off`);
     }
 
     // Optional user lookup — test messages can be sent to any recipient
