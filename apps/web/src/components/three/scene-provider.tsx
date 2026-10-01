@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, type ReactNode, useCallback } from "react";
+import { Component, Suspense, type ReactNode, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Preload, PerformanceMonitor } from "@react-three/drei";
 import { useWebGL, type DeviceTier } from "./use-webgl";
@@ -12,6 +12,22 @@ interface SceneProviderProps {
   className?: string;
   style?: React.CSSProperties;
   frameloop?: "always" | "demand" | "never";
+}
+
+class SceneErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (this.state.failed) return this.props.fallback;
+    return this.props.children;
+  }
 }
 
 const DPR_BY_TIER: Record<DeviceTier, [number, number]> = {
@@ -41,34 +57,34 @@ export function SceneProvider({
   }
 
   return (
-    <Canvas
-      className={className}
-      style={style}
-      dpr={DPR_BY_TIER[tier]}
-      frameloop={frameloop}
-      gl={{
-        antialias: tier === "high",
-        alpha: true,
-        powerPreference: tier === "high" ? "high-performance" : "default",
-        failIfMajorPerformanceCaveat: true,
-      }}
-      scene={{ background: colors.background }}
-      camera={{ position: [0, 0, 5], fov: 50 }}
-      // Flatten scene graph for better performance
-      flat={tier !== "high"}
-    >
-      {tier === "high" && (
-        <PerformanceMonitor
-          onDecline={onDecline}
-          flipflops={3}
-          factor={0.5}
-        />
-      )}
-      <Suspense fallback={null}>
-        {children}
-        <Preload all />
-      </Suspense>
-    </Canvas>
+    <SceneErrorBoundary fallback={fallback}>
+      <Canvas
+        className={className}
+        style={style}
+        dpr={DPR_BY_TIER[tier]}
+        frameloop={frameloop}
+        gl={{
+          antialias: tier === "high",
+          alpha: true,
+          powerPreference: tier === "high" ? "high-performance" : "default",
+        }}
+        scene={{ background: colors.background }}
+        camera={{ position: [0, 0, 5], fov: 50 }}
+        flat={tier !== "high"}
+      >
+        {tier === "high" && (
+          <PerformanceMonitor
+            onDecline={onDecline}
+            flipflops={3}
+            factor={0.5}
+          />
+        )}
+        <Suspense fallback={null}>
+          {children}
+          <Preload all />
+        </Suspense>
+      </Canvas>
+    </SceneErrorBoundary>
   );
 }
 
