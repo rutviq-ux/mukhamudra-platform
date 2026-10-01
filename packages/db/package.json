@@ -19,7 +19,7 @@
     "db:studio": "dotenv -e ../../.env -- prisma studio",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "type-check": "tsc --noEmit",
-    "build": "tsc -p tsconfig.json --incremental false"
+    "build": "DATABASE_URL=\"${DATABASE_URL:-postgresql://127.0.0.1:5432/postgres}\" prisma generate && tsc -p tsconfig.json --incremental false"
   },
   "dependencies": {
     "@prisma/client": "^6.2.0"
