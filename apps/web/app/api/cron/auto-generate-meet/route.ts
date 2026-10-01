@@ -8,7 +8,6 @@ import { clearReusedBatchMeetingLinks } from "@/lib/clear-reused-meet-links";
 import { syncSessionJoinUrlToSheet } from "@/lib/sync-session-join-url";
 import { createSessionMeet } from "@/lib/create-session-meet";
 import { reconcileMeetGroups } from "@/lib/sync-meet-group";
-import { onMeetLinkGenerated } from "@ru/notifications";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -50,7 +49,6 @@ async function handler(request: NextRequest) {
     });
 
     let generated = 0;
-    const generatedSessions: { id: string; meetLink: string }[] = [];
 
     for (const session of sessions) {
       try {
@@ -69,10 +67,6 @@ async function handler(request: NextRequest) {
         });
 
         generated++;
-        generatedSessions.push({
-          id: session.id,
-          meetLink: meetResult.meetLink,
-        });
         log.info({ sessionId: session.id }, "Auto-generated Meet link");
       } catch (error) {
         log.error(
@@ -116,17 +110,6 @@ async function handler(request: NextRequest) {
         log.warn(
           { err, sessionId: session.id },
           "Failed to write Join URL to paid-users sheet",
-        );
-      }
-    }
-
-    for (const session of generatedSessions) {
-      try {
-        await onMeetLinkGenerated(session.id, session.meetLink);
-      } catch (err) {
-        log.warn(
-          { err, sessionId: session.id },
-          "Interakt Meet-link notify failed after generate",
         );
       }
     }

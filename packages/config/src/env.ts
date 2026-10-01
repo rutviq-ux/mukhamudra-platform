@@ -40,6 +40,10 @@ const serverEnvSchema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().min(1).optional(),
   WHATSAPP_APP_SECRET: z.string().min(1).optional(),
+  WHATSAPP_PREPAYMENT_IMAGE_URL: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().url().optional(),
+  ),
 
   // Google Workspace (optional — feature-flagged by presence)
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().email().optional(),

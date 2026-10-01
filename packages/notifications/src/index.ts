@@ -11,3 +11,4 @@ export { sendWhatsApp } from "./send-whatsapp";
 export * from "./whatsapp-templates";
 
 export * from "./interakt-sync";
+export { sendTrialClassNotice } from "./mm-messages";

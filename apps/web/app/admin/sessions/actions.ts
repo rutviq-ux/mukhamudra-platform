@@ -18,6 +18,7 @@ import {
 } from "@/lib/sync-session-join-url";
 import { createSessionMeet } from "@/lib/create-session-meet";
 import { reconcileMeetGroups } from "@/lib/sync-meet-group";
+import { notifyNoLiveSession } from "@ru/notifications";
 
 // ---------- updateSession ----------
 
@@ -44,6 +45,10 @@ export const updateSession = createAdminAction("updateSession", {
       where: { id },
       data: fields,
     });
+
+    if (fields.status === "CANCELLED" && existing.status !== "CANCELLED") {
+      await notifyNoLiveSession(id);
+    }
 
     revalidatePath("/admin/sessions");
     return session;
