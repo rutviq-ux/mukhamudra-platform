@@ -256,6 +256,7 @@ export const batchSchema = z.object({
     .nullable(),
   endsAt: z.coerce.date().optional().nullable(),
   isActive: z.boolean().default(true),
+  remindersEnabled: z.boolean().default(true),
 });
 
 export type BatchInput = z.infer<typeof batchSchema>;

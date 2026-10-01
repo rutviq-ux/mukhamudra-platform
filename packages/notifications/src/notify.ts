@@ -336,7 +336,7 @@ export async function sendSessionReminders(): Promise<number> {
           user: { select: { id: true, name: true } },
         },
       },
-      batch: { select: { name: true, startTime: true } },
+      batch: { select: { name: true, startTime: true, remindersEnabled: true } },
       product: { select: { type: true } },
     },
   });
@@ -346,6 +346,14 @@ export async function sendSessionReminders(): Promise<number> {
     process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com";
 
   for (const session of sessions) {
+    if (session.batch && !session.batch.remindersEnabled) {
+      log.info(
+        { sessionId: session.id, batchId: session.batchId },
+        "Skipping reminders, disabled on batch",
+      );
+      continue;
+    }
+
     const sessionType = session.batch?.name || session.title || "Yoga";
     const joinLink = `${appUrl}/app/join/${session.id}`;
     const templateName = joinTemplateForStartTime(session.batch?.startTime ?? "");
