@@ -853,7 +853,8 @@ export async function notifyNoLiveSession(sessionId: string): Promise<void> {
     const time = formatInTime(session.startsAt);
     const legacyType = session.batch?.name || session.title || "class";
     const marker = `${MM.NO_LIVE_SESSION}:${sessionId}`;
-    const phrase = `no live ${classType} class on ${date}`;
+    const phrase = `live ${classType} session on ${date}`;
+    const previousPhrase = `no live ${classType} class on ${date}`;
     const legacyPhrase = `no live ${legacyType} class on ${date}`;
     const recipients = [...(await sessionRecipients(session)).values()];
     if (recipients.length === 0) return;
@@ -870,6 +871,7 @@ export async function notifyNoLiveSession(sessionId: string): Promise<void> {
           OR: [
             { body: { contains: marker } },
             { body: { contains: phrase } },
+            { body: { contains: previousPhrase } },
             { body: { contains: legacyPhrase } },
           ],
         },

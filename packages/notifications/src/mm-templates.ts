@@ -37,6 +37,32 @@ export function isMmMessageTemplate(name: string | null | undefined): boolean {
   return Boolean(name && MM_MESSAGE_NAMES.has(name));
 }
 
+export const BULK_CLASS_EMAILS = [
+  "mm_no_live_session_email",
+  "mm_join_pranayama_8am_email",
+  "mm_join_pranayama_9am_email",
+  "mm_join_face_yoga_9pm_email",
+  "mm_join_face_yoga_10pm_email",
+] as const;
+
+export function isBulkClassEmail(name: string | null | undefined): boolean {
+  return Boolean(name && (BULK_CLASS_EMAILS as readonly string[]).includes(name));
+}
+
+export function classNoticeEmailKey(body: string): string | null {
+  const match = body.match(
+    /<!-- (mm_no_live_session:[a-z0-9]+|session-reminder:[a-z0-9]+) -->/,
+  );
+  return match?.[1] ?? null;
+}
+
+export function sharedClassEmailHtml(body: string): string {
+  return body
+    .replace(/<p>Dear [^<]*,<\/p>/, "<p>Hello,</p>")
+    .replace(/<p>Namaste [^<]*,<\/p>/, "<p>Namaste,</p>")
+    .replace(/<!--[\s\S]*?-->/g, "");
+}
+
 export function firstName(fullName: string | null | undefined): string {
   const trimmed = fullName?.trim();
   if (!trimmed) return "there";
@@ -210,9 +236,7 @@ export const MM_EMAIL_TEMPLATES: MmEmailTemplate[] = [
     subject: "No live {{class_type}} class on {{date}} at {{time}}",
     isTransactional: true,
     variables: ["name", "class_type", "date", "time"],
-    body: letter(
-      `<p>There is no live {{class_type}} class on {{date}} at {{time}}.</p><p>We will see you at the next session.</p>`,
-    ),
+    body: `<p>Namaste {{name}},</p><p>Due to unforeseen personal reasons, the live {{class_type}} session on {{date}} at {{time}} will not be held.</p><p>We're sorry for the inconvenience. Please refer to the recording, which will be shared with you shortly.</p><p>Thank you for your understanding, and we'll see you at the next live session.</p><p>Warm regards,<br/>Mukha Mudra</p>`,
   },
   {
     name: "mm_renewal_email",
