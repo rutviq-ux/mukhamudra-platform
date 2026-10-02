@@ -23,7 +23,7 @@ import type { Client as WhatsAppClient } from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
 import { prisma } from "@ru/db";
 import { CONFIG, createLogger } from "@ru/config";
-import { checkRateLimit, updateMessageStatus, isNotificationChannelEnabled } from "@ru/notifications";
+import { checkRateLimit, updateMessageStatus, isNotificationChannelEnabled, isMmOutboxWhatsApp } from "@ru/notifications";
 
 const log = createLogger("wa-bot");
 
@@ -749,7 +749,16 @@ function startMessageProcessor(client: WhatsAppClient): void {
       const rateLimitConfig = await getRateLimitConfig();
 
       const queuedMessages = await prisma.messageLog.findMany({
-        where: { channel: "WHATSAPP", status: "QUEUED" },
+        where: {
+          channel: "WHATSAPP",
+          status: "QUEUED",
+          NOT: {
+            OR: [
+              { body: { startsWith: "mm_no_live_session:" } },
+              { body: { startsWith: "session-reminder:" } },
+            ],
+          },
+        },
         include: {
           user: { select: { whatsappOptIn: true } },
         },
@@ -759,6 +768,7 @@ function startMessageProcessor(client: WhatsAppClient): void {
 
       for (const msg of queuedMessages) {
         if (isShuttingDown || clientDead) break;
+        if (isMmOutboxWhatsApp(msg.body)) continue;
 
         // Opt-in guard (skip if user exists but hasn't opted in)
         if (msg.user && !msg.user.whatsappOptIn) {

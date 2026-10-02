@@ -14,3 +14,4 @@ export * from "./whatsapp-templates";
 export * from "./interakt-sync";
 export { sendTrialClassNotice, newNoticesEnabled } from "./mm-messages";
 export { isMmMessageTemplate } from "./mm-templates";
+export { drainMmOutbox, isMmOutboxWhatsApp } from "./mm-outbox";

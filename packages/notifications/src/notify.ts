@@ -5,8 +5,8 @@ import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { logMessage } from "./audit";
 import { isNotificationChannelEnabled } from "./channel-gates";
-import { sendPushForMessageLog } from "./send-push";
 import { sendWhatsApp } from "./send-whatsapp";
+import { createQueuedLogs, fillTemplate, withOutboxLock } from "./mm-outbox";
 import {
   deliverInteraktTemplate,
   ensureMmEmailTemplates,
@@ -383,16 +383,25 @@ export async function sendSessionReminders(): Promise<number> {
       );
     }
 
-    const recipients = await sessionRecipients(session);
+    const recipients = [...(await sessionRecipients(session)).values()];
+    if (recipients.length === 0) continue;
 
     const reminderSince = new Date(now.getTime() - 60 * 60_000);
     const reminderKey = `session-reminder:${session.id}`;
+    const emailTemplate =
+      batchRemindersOn && canSendJoin && templateName && session.joinUrl
+        ? await prisma.messageTemplate.findUnique({
+            where: { name: `${templateName}_email` },
+          })
+        : null;
+    const pushTemplate = await prisma.messageTemplate.findUnique({
+      where: { name: "session_reminder_push" },
+    });
 
-    for (const user of recipients.values()) {
-      const name = firstName(user.name);
-      const alreadySent = await prisma.messageLog.findFirst({
+    sent += await withOutboxLock(`mm-join:${session.id}`, async (db) => {
+      const existing = await db.messageLog.findMany({
         where: {
-          userId: user.id,
+          userId: { in: recipients.map((user) => user.id) },
           createdAt: { gte: reminderSince },
           status: { in: ["QUEUED", "SENT", "DELIVERED"] },
           OR: [
@@ -400,65 +409,62 @@ export async function sendSessionReminders(): Promise<number> {
             { body: { contains: `/app/join/${session.id}` } },
           ],
         },
-        select: { id: true },
+        select: { userId: true },
       });
-      if (alreadySent) continue;
+      const already = new Set(existing.map((row) => row.userId));
+      const pending = recipients.filter((user) => !already.has(user.id));
+      if (pending.length === 0) return 0;
 
-      if (
-        batchRemindersOn &&
-        canSendJoin &&
-        templateName &&
-        meetCode &&
-        session.joinUrl
-      ) {
-        let waSent = false;
-        if (user.phone && user.whatsappOptIn) {
-          waSent = await deliverInteraktTemplate({
-            rawPhone: user.phone,
-            logTo: user.phone,
-            userId: user.id,
-            templateName,
-            bodyValues: [name],
-            buttonValues: { "0": [meetCode] },
-            logBody: reminderKey,
-          });
-          if (waSent) sent++;
+      const rows: Parameters<typeof createQueuedLogs>[0] = [];
+
+      if (batchRemindersOn && canSendJoin && templateName && session.joinUrl) {
+        for (const user of pending) {
+          const name = firstName(user.name);
+          if (user.phone && user.whatsappOptIn) {
+            rows.push({
+              channel: "WHATSAPP",
+              to: user.phone,
+              userId: user.id,
+              body: reminderKey,
+            });
+          }
+          if (emailTemplate && user.email) {
+            const filled = fillTemplate(emailTemplate.body, emailTemplate.subject, {
+              name,
+              join_link: session.joinUrl,
+            });
+            rows.push({
+              channel: "EMAIL",
+              to: user.email,
+              userId: user.id,
+              templateId: emailTemplate.id,
+              subject: filled.subject,
+              body: `${filled.body}<!-- ${reminderKey} -->`,
+            });
+          }
         }
+      }
 
-        const emailLogId = await queueNotification({
-          userId: user.id,
-          templateName: `${templateName}_email`,
-          variables: {
-            name,
-            join_link: session.joinUrl,
-          },
-        });
-        if (emailLogId && !waSent) {
-          await logMessage({
-            channel: "EMAIL",
+      if (pushTemplate?.isActive) {
+        for (const user of pending) {
+          const filled = fillTemplate(pushTemplate.body, pushTemplate.subject, {
+            name: firstName(user.name),
+            session_type: sessionType,
+            join_link: joinLink,
+          });
+          rows.push({
+            channel: "PUSH",
             to: user.id,
             userId: user.id,
-            body: reminderKey,
-            status: "SENT",
+            templateId: pushTemplate.id,
+            subject: filled.subject,
+            body: filled.body,
           });
         }
       }
 
-      const pushLogId = await queueNotification({
-        userId: user.id,
-        templateName: "session_reminder_push",
-        variables: {
-          name,
-          session_type: sessionType,
-          join_link: joinLink,
-        },
-      });
-      if (pushLogId) {
-        await sendPushForMessageLog(pushLogId).catch((err) =>
-          log.error({ err }, "Failed to send push notification"),
-        );
-      }
-    }
+      return createQueuedLogs(rows, db);
+    });
   }
 
   return sent;
@@ -467,6 +473,7 @@ export async function sendSessionReminders(): Promise<number> {
 const recipientSelect = {
   id: true,
   name: true,
+  email: true,
   phone: true,
   whatsappOptIn: true,
 } as const;
@@ -801,6 +808,26 @@ export async function sendPrePaymentNotice(opts: {
   return ok;
 }
 
+export async function enqueueRecentCancellations(): Promise<void> {
+  const since = new Date(Date.now() - 36 * 60 * 60_000);
+  const logs = await prisma.messageLog.findMany({
+    where: {
+      createdAt: { gte: since },
+      body: { contains: "mm_no_live_session:" },
+    },
+    select: { body: true },
+    take: 500,
+  });
+  const ids = new Set<string>();
+  for (const row of logs) {
+    const match = row.body.match(/mm_no_live_session:([a-z0-9]+)/);
+    if (match?.[1]) ids.add(match[1]);
+  }
+  for (const id of ids) {
+    await notifyNoLiveSession(id);
+  }
+}
+
 export async function notifyNoLiveSession(sessionId: string): Promise<void> {
   try {
     await ensureMmEmailTemplates();
@@ -824,26 +851,57 @@ export async function notifyNoLiveSession(sessionId: string): Promise<void> {
 
     const sessionType = session.batch?.name || session.title || "class";
     const date = formatInDate(session.startsAt);
-    const recipients = await sessionRecipients(session);
+    const marker = `${MM.NO_LIVE_SESSION}:${sessionId}`;
+    const phrase = `no live ${sessionType} class on ${date}`;
+    const recipients = [...(await sessionRecipients(session)).values()];
+    if (recipients.length === 0) return;
 
-    for (const user of recipients.values()) {
-      const name = firstName(user.name);
-      if (user.phone && user.whatsappOptIn) {
-        await deliverInteraktTemplate({
-          rawPhone: user.phone,
-          logTo: user.phone,
-          userId: user.id,
-          templateName: MM.NO_LIVE_SESSION,
-          bodyValues: [name],
-          logBody: `${MM.NO_LIVE_SESSION}:${sessionId}`,
-        });
-      }
-      await queueNotification({
-        userId: user.id,
-        templateName: "mm_no_live_session_email",
-        variables: { name, session_type: sessionType, date },
+    const emailTemplate = await prisma.messageTemplate.findUnique({
+      where: { name: "mm_no_live_session_email" },
+    });
+
+    await withOutboxLock(`mm-cancel:${sessionId}`, async (db) => {
+      const existing = await db.messageLog.findMany({
+        where: {
+          userId: { in: recipients.map((user) => user.id) },
+          status: { in: ["QUEUED", "SENT", "DELIVERED"] },
+          OR: [
+            { body: { contains: marker } },
+            { body: { contains: phrase } },
+          ],
+        },
+        select: { userId: true, channel: true },
       });
-    }
+      const seen = new Set(existing.map((row) => `${row.channel}:${row.userId}`));
+      const rows: Parameters<typeof createQueuedLogs>[0] = [];
+      for (const user of recipients) {
+        const name = firstName(user.name);
+        if (user.phone && user.whatsappOptIn && !seen.has(`WHATSAPP:${user.id}`)) {
+          rows.push({
+            channel: "WHATSAPP",
+            to: user.phone,
+            userId: user.id,
+            body: marker,
+          });
+        }
+        if (emailTemplate && user.email && !seen.has(`EMAIL:${user.id}`)) {
+          const filled = fillTemplate(emailTemplate.body, emailTemplate.subject, {
+            name,
+            session_type: sessionType,
+            date,
+          });
+          rows.push({
+            channel: "EMAIL",
+            to: user.email,
+            userId: user.id,
+            templateId: emailTemplate.id,
+            subject: filled.subject,
+            body: `${filled.body}<!-- ${marker} -->`,
+          });
+        }
+      }
+      await createQueuedLogs(rows, db);
+    });
   } catch (err) {
     log.error({ err, sessionId }, "Failed to send no-live-session notices");
   }
