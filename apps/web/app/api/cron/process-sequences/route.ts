@@ -5,6 +5,7 @@ import {
   logMessage,
   queueNotification,
   emitSequenceEvent,
+  isNotificationChannelEnabled,
 } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
 
@@ -133,6 +134,11 @@ async function handler(request: NextRequest) {
       }
 
       if (!nextStep.template.isActive) {
+        skipped++;
+        continue;
+      }
+
+      if (!(await isNotificationChannelEnabled(nextStep.template.channel))) {
         skipped++;
         continue;
       }

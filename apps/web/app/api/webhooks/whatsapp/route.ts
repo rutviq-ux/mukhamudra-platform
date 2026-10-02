@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
-import { sendColdInquiryReply } from "@ru/notifications";
+import { sendPrePaymentNotice } from "@ru/notifications";
 
 const log = createLogger("webhook-whatsapp");
 
@@ -152,13 +152,24 @@ async function handleIncomingMessage(message: any, contact: any) {
     where: {
       to: from,
       channel: "WHATSAPP",
-      body: "mukhamudra_cold_inquiry",
+      OR: [
+        { body: "mukhamudra_cold_inquiry" },
+        {
+          body: "mm_pre_payment_info",
+          status: { in: ["SENT", "DELIVERED"] },
+        },
+      ],
     },
   });
 
   if (!alreadyReplied) {
-    sendColdInquiryReply(from).catch((err) =>
-      log.error({ err, from }, "Failed to send cold inquiry auto-reply")
+    await sendPrePaymentNotice({
+      rawPhone: from,
+      logTo: from,
+      userId: user?.id,
+      profileName: name,
+    }).catch((err) =>
+      log.error({ err, from }, "Failed to send pre-payment WhatsApp")
     );
     return;
   }

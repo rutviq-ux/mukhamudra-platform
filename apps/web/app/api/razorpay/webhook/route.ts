@@ -17,13 +17,8 @@ import {
   notifyPaymentFailed,
   notifyMembershipActivatedEmail,
   notifyMembershipCancelledEmail,
-  sendEnrollFaceYogaAnnual,
-  sendEnrollPranayamaAnnual,
-  sendEnrollBundleAnnual,
-  sendEnrollFaceYogaMonthly,
-  sendEnrollPranayamaMonthly,
-  sendEnrollBundleMonthly,
   sendEnrollRecordingsAddon,
+  sendPlanWelcome,
   flushQueuedEmailsForUser,
   onPaymentCaptured,
   onSubscriptionActivated,
@@ -311,6 +306,12 @@ async function handlePaymentCaptured(payload: any) {
         }).catch((err) =>
           log.error({ err }, "Failed to queue membership activated email"),
         ),
+        sendPlanWelcome({
+          userId: order.userId,
+          planSlug: order.plan.slug,
+        }).catch((err) =>
+          log.error({ err }, "Failed to send plan welcome"),
+        ),
       ]);
 
       // Queue WhatsApp group adds
@@ -358,47 +359,6 @@ async function handlePaymentCaptured(payload: any) {
       flushQueuedEmailsForUser(order.userId).catch((err) =>
         log.error({ err }, "Failed to flush confirmation emails"),
       );
-
-      // ─── Send enrollment WhatsApp template based on plan ───
-      const slug = order.plan.slug;
-      const uid = order.userId;
-      const pEnd = result.periodEnd;
-
-      if (slug === "face-annual") {
-        sendEnrollFaceYogaAnnual({ userId: uid, periodEnd: pEnd }).catch(
-          (err) =>
-            log.error({ err }, "Failed to send Face Yoga Annual enrollment WA"),
-        );
-      } else if (slug === "pranayama-annual") {
-        sendEnrollPranayamaAnnual({ userId: uid, periodEnd: pEnd }).catch(
-          (err) =>
-            log.error({ err }, "Failed to send Pranayama Annual enrollment WA"),
-        );
-      } else if (slug === "bundle-annual") {
-        sendEnrollBundleAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-          log.error({ err }, "Failed to send Bundle Annual enrollment WA"),
-        );
-      } else if (slug === "bundle-monthly") {
-        sendEnrollBundleMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-          log.error({ err }, "Failed to send Bundle Monthly enrollment WA"),
-        );
-      } else if (slug === "face-monthly") {
-        sendEnrollFaceYogaMonthly({ userId: uid, periodEnd: pEnd }).catch(
-          (err) =>
-            log.error(
-              { err },
-              "Failed to send Face Yoga Monthly enrollment WA",
-            ),
-        );
-      } else if (slug === "pranayama-monthly") {
-        sendEnrollPranayamaMonthly({ userId: uid, periodEnd: pEnd }).catch(
-          (err) =>
-            log.error(
-              { err },
-              "Failed to send Pranayama Monthly enrollment WA",
-            ),
-        );
-      }
 
       syncPaidUserToSheet(order.userId).catch((err) =>
         log.error({ err, userId: order.userId }, "Failed to sync paid-user sheet"),
@@ -566,39 +526,12 @@ async function handleSubscriptionActivated(payload: any) {
     ),
   );
 
-  // ─── Send enrollment WhatsApp template ───
-  if (currentPeriodEnd) {
-    const slug = membership.plan.slug;
-    const uid = membership.userId;
-    const pEnd = currentPeriodEnd;
-
-    if (slug === "face-annual") {
-      sendEnrollFaceYogaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Face Yoga Annual enrollment WA"),
-      );
-    } else if (slug === "pranayama-annual") {
-      sendEnrollPranayamaAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Pranayama Annual enrollment WA"),
-      );
-    } else if (slug === "bundle-annual") {
-      sendEnrollBundleAnnual({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Bundle Annual enrollment WA"),
-      );
-    } else if (slug === "bundle-monthly") {
-      sendEnrollBundleMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Bundle Monthly enrollment WA"),
-      );
-    } else if (slug === "face-monthly") {
-      sendEnrollFaceYogaMonthly({ userId: uid, periodEnd: pEnd }).catch((err) =>
-        log.error({ err }, "Failed to send Face Yoga Monthly enrollment WA"),
-      );
-    } else if (slug === "pranayama-monthly") {
-      sendEnrollPranayamaMonthly({ userId: uid, periodEnd: pEnd }).catch(
-        (err) =>
-          log.error({ err }, "Failed to send Pranayama Monthly enrollment WA"),
-      );
-    }
-  }
+  emailPromises.push(
+    sendPlanWelcome({
+      userId: membership.userId,
+      planSlug: membership.plan.slug,
+    }).catch((err) => log.error({ err }, "Failed to send plan welcome")),
+  );
 
   syncPaidUserToSheet(membership.userId).catch((err) =>
     log.error(

@@ -3,7 +3,7 @@
 import { prisma } from "@ru/db";
 import { leadSchema } from "@ru/config";
 import { createPublicAction } from "@/lib/actions/safe-action";
-import { emitSequenceEvent } from "@ru/notifications";
+import { emitSequenceEvent, sendTrialClassNotice } from "@ru/notifications";
 import { createLogger } from "@ru/config";
 import {
   leadPhoneVariants,
@@ -21,14 +21,21 @@ export const submitLead = createPublicAction("submitLead", {
     const phoneVariants = leadPhoneVariants(phone);
     const normalizedEmail = email || undefined;
 
-    const existingUser = await prisma.user.findFirst({
+    const matchingUsers = await prisma.user.findMany({
       where: {
         OR: [
           { phone: { in: phoneVariants } },
           ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
         ],
       },
-      select: { id: true },
+      select: {
+        id: true,
+        memberships: {
+          where: { status: "ACTIVE" },
+          select: { id: true },
+          take: 1,
+        },
+      },
     });
 
     const existingLead = await prisma.lead.findFirst({
@@ -41,12 +48,24 @@ export const submitLead = createPublicAction("submitLead", {
       orderBy: { createdAt: "asc" },
     });
 
-    if (existingUser) {
-      return { id: existingLead?.id ?? existingUser.id };
+    const account = matchingUsers[0];
+    const hasActiveMembership = matchingUsers.some(
+      (user) => user.memberships.length > 0,
+    );
+
+    if (!hasActiveMembership) {
+      await sendTrialClassNotice({
+        rawPhone: phone,
+        name,
+        userId: account?.id,
+      }).catch((err) =>
+        log.error({ err }, "Failed to send trial class WhatsApp"),
+      );
     }
 
-    if (existingLead) {
-      return { id: existingLead.id };
+    const existingId = existingLead?.id ?? account?.id;
+    if (existingId) {
+      return { id: existingId };
     }
 
     const lead = await prisma.lead.create({

@@ -4,8 +4,25 @@
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { logMessage } from "./audit";
+import { isNotificationChannelEnabled } from "./channel-gates";
 import { sendPushForMessageLog } from "./send-push";
 import { sendWhatsApp } from "./send-whatsapp";
+import {
+  deliverInteraktTemplate,
+  ensureMmEmailTemplates,
+  newNoticesEnabled,
+  prePaymentImageUrl,
+} from "./mm-messages";
+import {
+  MM,
+  firstName,
+  formatInDate,
+  isMmMessageTemplate,
+  joinTemplateForStartTime,
+  meetCodeFromJoinUrl,
+  programLabel,
+  welcomeTemplateForSlug,
+} from "./mm-templates";
 
 const log = createLogger("notifications");
 
@@ -47,7 +64,15 @@ export async function queueNotification({
     log.warn({ templateName }, "Message template not found — notification skipped");
     return null;
   }
-  if (!template.isActive) {
+  const followsBatchReminders = isMmMessageTemplate(templateName);
+  if (!followsBatchReminders && !(await isNotificationChannelEnabled(template.channel))) {
+    log.info(
+      { templateName, channel: template.channel },
+      "Notification channel disabled",
+    );
+    return null;
+  }
+  if (!followsBatchReminders && !template.isActive) {
     log.warn({ templateName }, "Message template is inactive — notification skipped");
     return null;
   }
@@ -304,6 +329,8 @@ export async function sendSessionReminders(): Promise<number> {
   const reminderWindow = new Date(now.getTime() + 15 * 60_000); // 15 min from now
   const reminderWindowEnd = new Date(now.getTime() + 16 * 60_000); // 16 min (1 min window)
 
+  await ensureMmEmailTemplates();
+
   // Find sessions starting in ~15 minutes
   const sessions = await prisma.session.findMany({
     where: {
@@ -320,7 +347,7 @@ export async function sendSessionReminders(): Promise<number> {
           user: { select: { id: true, name: true } },
         },
       },
-      batch: { select: { name: true } },
+      batch: { select: { name: true, startTime: true, remindersEnabled: true } },
       product: { select: { type: true } },
     },
   });
@@ -330,50 +357,39 @@ export async function sendSessionReminders(): Promise<number> {
     process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com";
 
   for (const session of sessions) {
+    const batchRemindersOn = !session.batch || session.batch.remindersEnabled;
+    if (!batchRemindersOn) {
+      log.info(
+        { sessionId: session.id, batchId: session.batchId },
+        "Skipping new class notices, disabled on batch",
+      );
+    }
+
     const sessionType = session.batch?.name || session.title || "Yoga";
     const joinLink = `${appUrl}/app/join/${session.id}`;
-    const dashboardUrl = `${appUrl}/app`;
+    const templateName = joinTemplateForStartTime(session.batch?.startTime ?? "");
+    const meetCode = meetCodeFromJoinUrl(session.joinUrl);
+    const canSendJoin = Boolean(templateName && meetCode && session.joinUrl);
 
-    const recipientSelect = {
-      id: true,
-      name: true,
-      phone: true,
-      whatsappOptIn: true,
-    } as const;
-
-    const members = await prisma.user.findMany({
-      where: {
-        memberships: {
-          some: {
-            status: "ACTIVE",
-            plan: {
-              product: {
-                type: { in: [session.product.type, "BUNDLE"] },
-              },
-            },
-          },
-        },
-      },
-      select: recipientSelect,
-    });
-
-    const recipients = new Map(
-      members.map((user) => [user.id, user] as const),
-    );
-    for (const booking of session.bookings) {
-      if (recipients.has(booking.user.id)) continue;
-      const user = await prisma.user.findUnique({
-        where: { id: booking.user.id },
-        select: recipientSelect,
-      });
-      if (user) recipients.set(user.id, user);
+    if (!templateName) {
+      log.warn(
+        { sessionId: session.id, startTime: session.batch?.startTime },
+        "No class-join template for this start time",
+      );
+    } else if (!canSendJoin) {
+      log.warn(
+        { sessionId: session.id },
+        "Skipping class join messages, Meet link is not ready",
+      );
     }
+
+    const recipients = await sessionRecipients(session);
 
     const reminderSince = new Date(now.getTime() - 60 * 60_000);
     const reminderKey = `session-reminder:${session.id}`;
 
     for (const user of recipients.values()) {
-      const name = user.name?.split(" ")[0] || "there";
+      const name = firstName(user.name);
       const alreadySent = await prisma.messageLog.findFirst({
         where: {
           userId: user.id,
@@ -388,15 +404,44 @@ export async function sendSessionReminders(): Promise<number> {
       });
       if (alreadySent) continue;
 
-      if (user.phone && user.whatsappOptIn) {
-        await sendWhatsApp({
+      if (
+        batchRemindersOn &&
+        canSendJoin &&
+        templateName &&
+        meetCode &&
+        session.joinUrl
+      ) {
+        let waSent = false;
+        if (user.phone && user.whatsappOptIn) {
+          waSent = await deliverInteraktTemplate({
+            rawPhone: user.phone,
+            logTo: user.phone,
+            userId: user.id,
+            templateName,
+            bodyValues: [name],
+            buttonValues: { "0": [meetCode] },
+            logBody: reminderKey,
+          });
+          if (waSent) sent++;
+        }
+
+        const emailLogId = await queueNotification({
           userId: user.id,
-          phone: user.phone,
-          body: reminderKey,
-          templateName: "mukhamudra_class_reminder",
-          templateParams: [name, sessionType, dashboardUrl],
+          templateName: `${templateName}_email`,
+          variables: {
+            name,
+            join_link: session.joinUrl,
+          },
         });
-        sent++;
+        if (emailLogId && !waSent) {
+          await logMessage({
+            channel: "EMAIL",
+            to: user.id,
+            userId: user.id,
+            body: reminderKey,
+            status: "SENT",
+          });
+        }
       }
 
       const pushLogId = await queueNotification({
@@ -417,6 +462,45 @@ export async function sendSessionReminders(): Promise<number> {
   }
 
   return sent;
+}
+
+const recipientSelect = {
+  id: true,
+  name: true,
+  phone: true,
+  whatsappOptIn: true,
+} as const;
+
+async function sessionRecipients(session: {
+  product: { type: "FACE_YOGA" | "PRANAYAMA" | "BUNDLE" };
+  bookings: { user: { id: string } }[];
+}) {
+  const members = await prisma.user.findMany({
+    where: {
+      memberships: {
+        some: {
+          status: "ACTIVE",
+          plan: {
+            product: {
+              type: { in: [session.product.type, "BUNDLE"] },
+            },
+          },
+        },
+      },
+    },
+    select: recipientSelect,
+  });
+
+  const recipients = new Map(members.map((user) => [user.id, user] as const));
+  for (const booking of session.bookings) {
+    if (recipients.has(booking.user.id)) continue;
+    const user = await prisma.user.findUnique({
+      where: { id: booking.user.id },
+      select: recipientSelect,
+    });
+    if (user) recipients.set(user.id, user);
+  }
+  return recipients;
 }
 
 /**
@@ -607,6 +691,239 @@ export async function notifyPaymentHealthWeekly(opts: {
 /**
  * Notify user of WhatsApp opt-out confirmation.
  */
+export async function sendPlanWelcome(opts: {
+  userId: string;
+  planSlug: string;
+}): Promise<void> {
+  const templateName = welcomeTemplateForSlug(opts.planSlug);
+  if (!templateName) return;
+
+  const productTypes = opts.planSlug.startsWith("face-")
+    ? ["FACE_YOGA"]
+    : opts.planSlug.startsWith("pranayama-")
+      ? ["PRANAYAMA"]
+      : ["FACE_YOGA", "PRANAYAMA"];
+  if (!(await newNoticesEnabled(productTypes))) {
+    log.info({ planSlug: opts.planSlug }, "Skipping plan welcome, batch reminders disabled");
+    return;
+  }
+
+  await ensureMmEmailTemplates();
+
+  const since = new Date(Date.now() - 24 * 60 * 60_000);
+  const emailTemplate = await prisma.messageTemplate.findUnique({
+    where: { name: `${templateName}_email` },
+    select: { id: true },
+  });
+  const alreadySent = await prisma.messageLog.findFirst({
+    where: {
+      userId: opts.userId,
+      createdAt: { gte: since },
+      status: { in: ["QUEUED", "SENT", "DELIVERED"] },
+      OR: [
+        { channel: "WHATSAPP", body: templateName },
+        ...(emailTemplate ? [{ templateId: emailTemplate.id }] : []),
+      ],
+    },
+    select: { id: true },
+  });
+  if (alreadySent) return;
+
+  const user = await prisma.user.findUnique({
+    where: { id: opts.userId },
+    select: { name: true, phone: true, whatsappOptIn: true },
+  });
+  const name = firstName(user?.name);
+
+  if (user?.phone && user.whatsappOptIn) {
+    await deliverInteraktTemplate({
+      rawPhone: user.phone,
+      logTo: user.phone,
+      userId: opts.userId,
+      templateName,
+      bodyValues: [name],
+      logBody: templateName,
+    });
+  }
+
+  await queueNotification({
+    userId: opts.userId,
+    templateName: `${templateName}_email`,
+    variables: { name },
+  });
+}
+
+export async function sendPrePaymentNotice(opts: {
+  rawPhone: string;
+  logTo: string;
+  userId?: string;
+  profileName?: string | null;
+}): Promise<boolean> {
+  if (!(await newNoticesEnabled())) {
+    log.info("Skipping pre-payment notice, batch reminders disabled");
+    return false;
+  }
+
+  const imageUrl = prePaymentImageUrl();
+  if (!imageUrl) {
+    log.warn("Skipping pre-payment WhatsApp, WHATSAPP_PREPAYMENT_IMAGE_URL is not set");
+    return false;
+  }
+
+  await ensureMmEmailTemplates();
+
+  const user = opts.userId
+    ? await prisma.user.findUnique({
+        where: { id: opts.userId },
+        select: { name: true },
+      })
+    : null;
+  const name = firstName(user?.name || opts.profileName);
+
+  const ok = await deliverInteraktTemplate({
+    rawPhone: opts.rawPhone,
+    logTo: opts.logTo,
+    userId: opts.userId,
+    templateName: MM.PRE_PAYMENT,
+    bodyValues: [name],
+    headerValues: [imageUrl],
+    logBody: MM.PRE_PAYMENT,
+  });
+
+  if (ok && opts.userId) {
+    await queueNotification({
+      userId: opts.userId,
+      templateName: "mm_pre_payment_info_email",
+      variables: { name },
+    });
+  }
+
+  return ok;
+}
+
+export async function notifyNoLiveSession(sessionId: string): Promise<void> {
+  try {
+    await ensureMmEmailTemplates();
+
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        bookings: {
+          where: { status: "CONFIRMED" },
+          include: { user: { select: { id: true } } },
+        },
+        batch: { select: { name: true, remindersEnabled: true } },
+        product: { select: { type: true } },
+      },
+    });
+    if (!session) return;
+    if (session.batch && !session.batch.remindersEnabled) {
+      log.info({ sessionId }, "Skipping no-live-session notices, disabled on batch");
+      return;
+    }
+
+    const sessionType = session.batch?.name || session.title || "class";
+    const date = formatInDate(session.startsAt);
+    const recipients = await sessionRecipients(session);
+
+    for (const user of recipients.values()) {
+      const name = firstName(user.name);
+      if (user.phone && user.whatsappOptIn) {
+        await deliverInteraktTemplate({
+          rawPhone: user.phone,
+          logTo: user.phone,
+          userId: user.id,
+          templateName: MM.NO_LIVE_SESSION,
+          bodyValues: [name],
+          logBody: `${MM.NO_LIVE_SESSION}:${sessionId}`,
+        });
+      }
+      await queueNotification({
+        userId: user.id,
+        templateName: "mm_no_live_session_email",
+        variables: { name, session_type: sessionType, date },
+      });
+    }
+  } catch (err) {
+    log.error({ err, sessionId }, "Failed to send no-live-session notices");
+  }
+}
+
+export async function sendRenewalReminders(): Promise<number> {
+  await ensureMmEmailTemplates();
+
+  const start = new Date(Date.now() + 7 * 24 * 60 * 60_000);
+  const end = new Date(Date.now() + 8 * 24 * 60 * 60_000);
+  const memberships = await prisma.membership.findMany({
+    where: {
+      status: "ACTIVE",
+      periodEnd: { gte: start, lt: end },
+    },
+    include: {
+      user: { select: { id: true, name: true, phone: true, whatsappOptIn: true } },
+      plan: { include: { product: { select: { type: true } } } },
+    },
+  });
+
+  let sent = 0;
+  for (const membership of memberships) {
+    if (!membership.periodEnd) continue;
+    const productTypes =
+      membership.plan.product.type === "BUNDLE"
+        ? ["FACE_YOGA", "PRANAYAMA"]
+        : [membership.plan.product.type];
+    if (!(await newNoticesEnabled(productTypes))) continue;
+
+    const marker = `${MM.RENEWAL}:${membership.id}`;
+    const alreadySent = await prisma.messageLog.findFirst({
+      where: {
+        userId: membership.userId,
+        body: marker,
+        status: { in: ["SENT", "DELIVERED", "QUEUED"] },
+      },
+      select: { id: true },
+    });
+    if (alreadySent) continue;
+
+    const name = firstName(membership.user.name);
+    const endDate = formatInDate(membership.periodEnd);
+    const program = programLabel(membership.plan.product.type);
+
+    let marked = false;
+    if (membership.user.phone && membership.user.whatsappOptIn) {
+      const ok = await deliverInteraktTemplate({
+        rawPhone: membership.user.phone,
+        logTo: membership.user.phone,
+        userId: membership.userId,
+        templateName: MM.RENEWAL,
+        bodyValues: [name, endDate, program],
+        logBody: marker,
+      });
+      if (ok) {
+        sent++;
+        marked = true;
+      }
+    }
+
+    const emailLogId = await queueNotification({
+      userId: membership.userId,
+      templateName: "mm_renewal_email",
+      variables: { name, end_date: endDate, program },
+    });
+    if (emailLogId && !marked) {
+      await logMessage({
+        channel: "EMAIL",
+        to: membership.userId,
+        userId: membership.userId,
+        body: marker,
+        status: "SENT",
+      });
+    }
+  }
+
+  return sent;
+}
+
 export async function notifyOptOutConfirmation(opts: {
   userId: string;
 }): Promise<void> {

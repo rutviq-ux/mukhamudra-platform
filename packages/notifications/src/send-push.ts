@@ -9,6 +9,7 @@ import {
   type PushProvider,
 } from "./providers/push";
 import { updateMessageStatus, failDisabledTemplateMessage, isTemplateDisabled } from "./audit";
+import { isNotificationChannelEnabled } from "./channel-gates";
 
 const log = createLogger("notifications:push");
 
@@ -41,6 +42,11 @@ export async function sendPushForMessageLog(logId: string): Promise<void> {
     messageLog.channel !== "PUSH" ||
     messageLog.status !== "QUEUED"
   ) {
+    return;
+  }
+
+  if (!(await isNotificationChannelEnabled("PUSH"))) {
+    log.info({ logId }, "Push channel disabled");
     return;
   }
 

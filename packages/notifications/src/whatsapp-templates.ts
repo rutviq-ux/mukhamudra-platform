@@ -270,6 +270,12 @@ export async function sendEnrollRecordingsAddon(opts: {
 // ─── Cold inquiry auto-reply ──────────────────────────────────────────────────
 
 export async function sendColdInquiryReply(to: string) {
+  const { isNotificationChannelEnabled } = await import("./channel-gates");
+  if (!(await isNotificationChannelEnabled("WHATSAPP"))) {
+    log.info({ to }, "WhatsApp channel disabled");
+    return;
+  }
+
   const cloud = new (await import("./providers/whatsapp")).WhatsAppBusinessProvider({
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN ?? "",
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",

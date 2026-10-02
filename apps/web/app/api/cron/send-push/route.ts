@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
-import { sendPushForMessageLog } from "@ru/notifications";
+import { sendPushForMessageLog, isNotificationChannelEnabled } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
 
 const log = createLogger("cron:send-push");
 
 async function handler(request: NextRequest) {
   try {
+    if (!(await isNotificationChannelEnabled("PUSH"))) {
+      return NextResponse.json({ status: "skipped", reason: "channel_disabled" });
+    }
+
     // Fetch queued push messages
     const messages = await prisma.messageLog.findMany({
       where: {

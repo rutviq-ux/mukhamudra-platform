@@ -37,6 +37,7 @@ interface Batch {
   dayModalities: DayModalities | null;
   endsAt: string | null;
   isActive: boolean;
+  remindersEnabled: boolean;
   product: { id: string; name: string };
   productType: string;
   _count: { sessions: number };
@@ -103,6 +104,7 @@ function defaultFormValues(products: Product[]): BatchFormValues {
     dayModalities: null,
     endsAt: null,
     isActive: true,
+    remindersEnabled: true,
   };
 }
 
@@ -192,6 +194,7 @@ export function BatchManager({ batches, products }: BatchManagerProps) {
       dayModalities: batch.dayModalities,
       endsAt: (batch.endsAt ?? null) as unknown as Date | null,
       isActive: batch.isActive,
+      remindersEnabled: batch.remindersEnabled,
     });
     setLocalDays(batch.daysOfWeek);
     setLocalDayMods(batch.dayModalities ?? {});
@@ -640,6 +643,21 @@ export function BatchManager({ batches, products }: BatchManagerProps) {
           </Label>
         </div>
 
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="batch-reminders"
+            {...form.register("remindersEnabled")}
+            className="rounded"
+          />
+          <Label htmlFor="batch-reminders" className="text-sm font-normal">
+            Send class reminders
+          </Label>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Off stops the new class notices for this batch. Older messages are switched on the Messages page.
+        </p>
+
         {/* Submit */}
         <div className="flex gap-2">
           <Button type="submit" disabled={isPending}>
@@ -727,6 +745,11 @@ export function BatchManager({ batches, products }: BatchManagerProps) {
                   >
                     {batch.isActive ? "Active" : "Inactive"}
                   </span>
+                  {!batch.remindersEnabled && (
+                    <span className="mt-1 block px-2 py-1 rounded text-xs bg-muted text-muted-foreground w-fit">
+                      No reminders
+                    </span>
+                  )}
                 </td>
                 <td className="p-3 hidden lg:table-cell">{batch._count.sessions}</td>
                 <td className="p-3">

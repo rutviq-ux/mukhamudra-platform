@@ -1,4 +1,5 @@
 import { prisma } from "@ru/db";
+import { NOTIFICATION_CHANNELS_KEY } from "@ru/notifications";
 import {
   Card,
   CardContent,
@@ -11,12 +12,25 @@ import {
 } from "@ru/ui";
 import { SendTestMessage } from "./send-test-message";
 import { TemplateEditor } from "./template-editor";
+import { ChannelSwitches } from "./channel-switches";
 
 export default async function AdminMessagesPage() {
-  const templates = await prisma.messageTemplate.findMany({
-    orderBy: { name: "asc" },
-    include: { _count: { select: { messageLogs: true } } },
-  });
+  const [templates, channelSetting] = await Promise.all([
+    prisma.messageTemplate.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { messageLogs: true } } },
+    }),
+    prisma.setting.findUnique({ where: { key: NOTIFICATION_CHANNELS_KEY } }),
+  ]);
+
+  const stored = channelSetting?.value as
+    | { whatsapp?: boolean; email?: boolean; push?: boolean }
+    | null;
+  const channels = {
+    whatsapp: stored?.whatsapp !== false,
+    email: stored?.email !== false,
+    push: stored?.push !== false,
+  };
 
   const recentMessages = await prisma.messageLog.findMany({
     orderBy: { createdAt: "desc" },
@@ -37,6 +51,15 @@ export default async function AdminMessagesPage() {
   return (
     <div>
       <h1 className="text-3xl font-light mb-8">Messages</h1>
+
+      <Card glass className="max-w-xl mb-8">
+        <CardHeader>
+          <CardTitle>Channel sending</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChannelSwitches initial={channels} />
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-8">
         {/* Templates - 2 cols */}

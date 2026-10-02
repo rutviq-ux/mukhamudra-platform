@@ -9,6 +9,10 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/renewal-reminders",
+      "schedule": "0 4 * * *"
+    },
+    {
       "path": "/api/cron/expire-recording-access",
       "schedule": "0 0 * * *"
     },

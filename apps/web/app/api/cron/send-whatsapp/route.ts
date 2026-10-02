@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
-import { WhatsAppBusinessProvider, updateMessageStatus, failDisabledTemplateMessage, isTemplateDisabled } from "@ru/notifications";
+import { WhatsAppBusinessProvider, updateMessageStatus, failDisabledTemplateMessage, isTemplateDisabled, isNotificationChannelEnabled } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
 
 const log = createLogger("cron:send-whatsapp");
@@ -13,6 +13,10 @@ const FREE_TEXT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 async function handler(_request: NextRequest) {
   try {
+    if (!(await isNotificationChannelEnabled("WHATSAPP"))) {
+      return NextResponse.json({ status: "skipped", reason: "channel_disabled" });
+    }
+
     const token = process.env.WHATSAPP_ACCESS_TOKEN;
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 

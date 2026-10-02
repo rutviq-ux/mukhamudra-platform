@@ -100,6 +100,11 @@ const SCHEDULES = [
     cron: "0 3 * * 1",
     comment: "Weekly failed-payment health email to admin/ops",
   },
+  {
+    path: "/api/cron/renewal-reminders",
+    cron: "0 4 * * *",
+    comment: "Membership renewal WhatsApp and email, 7 days before period end",
+  },
 ];
 
 async function listExistingSchedules(): Promise<
@@ -133,21 +138,20 @@ async function createSchedule(schedule: (typeof SCHEDULES)[number]) {
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${QSTASH_TOKEN}`,
-    "Content-Type": "application/json",
     "Upstash-Cron": schedule.cron,
+    "Upstash-Method": "POST",
   };
   if (CRON_SECRET) {
     headers["Upstash-Forward-Authorization"] = `Bearer ${CRON_SECRET}`;
   }
 
-  const res = await fetch("https://qstash-us-east-1.upstash.io/v2/schedules", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      destination: url,
+  const res = await fetch(
+    `https://qstash-us-east-1.upstash.io/v2/schedules/${url}`,
+    {
       method: "POST",
-    }),
-  });
+      headers,
+    },
+  );
 
   if (!res.ok) {
     const err = await res.text();

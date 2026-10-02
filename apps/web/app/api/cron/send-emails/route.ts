@@ -8,6 +8,8 @@ import {
   updateMessageStatus,
   failDisabledTemplateMessage,
   isTemplateDisabled,
+  isNotificationChannelEnabled,
+  isMmMessageTemplate,
   type EmailProvider,
 } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
@@ -16,6 +18,8 @@ const log = createLogger("cron:send-emails");
 
 async function handler(request: NextRequest) {
   try {
+    const emailEnabled = await isNotificationChannelEnabled("EMAIL");
+
     const env = getServerEnv();
 
     // Resend is the primary transactional sender. Fall back to Listmonk only
@@ -43,7 +47,7 @@ async function handler(request: NextRequest) {
         channel: "EMAIL",
         status: "QUEUED",
       },
-      include: { template: { select: { isActive: true } } },
+      include: { template: { select: { name: true, isActive: true } } },
       orderBy: { createdAt: "asc" },
       take: 50,
     });
@@ -58,7 +62,12 @@ async function handler(request: NextRequest) {
 
     for (const msg of messages) {
       try {
-        if (isTemplateDisabled(msg.template)) {
+        const mmMessage = isMmMessageTemplate(msg.template?.name);
+        if (!mmMessage && !emailEnabled) {
+          skipped++;
+          continue;
+        }
+        if (!mmMessage && isTemplateDisabled(msg.template)) {
           await failDisabledTemplateMessage(msg.id);
           skipped++;
           continue;
