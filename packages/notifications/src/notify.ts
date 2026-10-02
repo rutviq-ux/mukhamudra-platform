@@ -17,6 +17,7 @@ import {
   MM,
   firstName,
   formatInDate,
+  formatInTime,
   isMmMessageTemplate,
   joinTemplateForStartTime,
   meetCodeFromJoinUrl,
@@ -326,17 +327,15 @@ export async function notifyBundleWelcome(opts: {
  */
 export async function sendSessionReminders(): Promise<number> {
   const now = new Date();
-  const reminderWindow = new Date(now.getTime() + 15 * 60_000); // 15 min from now
-  const reminderWindowEnd = new Date(now.getTime() + 16 * 60_000); // 16 min (1 min window)
+  const reminderWindowEnd = new Date(now.getTime() + 16 * 60_000);
 
   await ensureMmEmailTemplates();
 
-  // Find sessions starting in ~15 minutes
   const sessions = await prisma.session.findMany({
     where: {
       status: "SCHEDULED",
       startsAt: {
-        gte: reminderWindow,
+        gt: now,
         lt: reminderWindowEnd,
       },
     },
@@ -849,10 +848,13 @@ export async function notifyNoLiveSession(sessionId: string): Promise<void> {
       return;
     }
 
-    const sessionType = session.batch?.name || session.title || "class";
+    const classType = programLabel(session.product.type);
     const date = formatInDate(session.startsAt);
+    const time = formatInTime(session.startsAt);
+    const legacyType = session.batch?.name || session.title || "class";
     const marker = `${MM.NO_LIVE_SESSION}:${sessionId}`;
-    const phrase = `no live ${sessionType} class on ${date}`;
+    const phrase = `no live ${classType} class on ${date}`;
+    const legacyPhrase = `no live ${legacyType} class on ${date}`;
     const recipients = [...(await sessionRecipients(session)).values()];
     if (recipients.length === 0) return;
 
@@ -868,6 +870,7 @@ export async function notifyNoLiveSession(sessionId: string): Promise<void> {
           OR: [
             { body: { contains: marker } },
             { body: { contains: phrase } },
+            { body: { contains: legacyPhrase } },
           ],
         },
         select: { userId: true, channel: true },
@@ -887,8 +890,9 @@ export async function notifyNoLiveSession(sessionId: string): Promise<void> {
         if (emailTemplate && user.email && !seen.has(`EMAIL:${user.id}`)) {
           const filled = fillTemplate(emailTemplate.body, emailTemplate.subject, {
             name,
-            session_type: sessionType,
+            class_type: classType,
             date,
+            time,
           });
           rows.push({
             channel: "EMAIL",

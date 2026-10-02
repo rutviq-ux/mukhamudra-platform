@@ -107,6 +107,19 @@ export function formatInDate(date: Date): string {
   });
 }
 
+export function formatInTime(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  }).formatToParts(date);
+  const hour = parts.find((part) => part.type === "hour")?.value ?? "";
+  const minute = parts.find((part) => part.type === "minute")?.value ?? "00";
+  const dayPeriod = parts.find((part) => part.type === "dayPeriod")?.value ?? "";
+  return `${hour}:${minute} ${dayPeriod}`;
+}
+
 export interface MmEmailTemplate {
   name: string;
   subject: string;
@@ -194,11 +207,11 @@ export const MM_EMAIL_TEMPLATES: MmEmailTemplate[] = [
   },
   {
     name: "mm_no_live_session_email",
-    subject: "No live class today",
+    subject: "No live {{class_type}} class on {{date}} at {{time}}",
     isTransactional: true,
-    variables: ["name", "session_type", "date"],
+    variables: ["name", "class_type", "date", "time"],
     body: letter(
-      `<p>There is no live {{session_type}} class on {{date}}.</p><p>We will see you at the next session.</p>`,
+      `<p>There is no live {{class_type}} class on {{date}} at {{time}}.</p><p>We will see you at the next session.</p>`,
     ),
   },
   {

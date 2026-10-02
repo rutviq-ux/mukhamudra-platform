@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   firstName,
+  formatInDate,
+  formatInTime,
   isMmMessageTemplate,
   joinTemplateForStartTime,
   meetCodeFromJoinUrl,
@@ -65,6 +67,14 @@ describe("isMmMessageTemplate", () => {
     expect(isMmMessageTemplate("mm_join_pranayama_8am")).toBe(true);
     expect(isMmMessageTemplate("mm_welcome_face_yoga_email")).toBe(true);
     expect(isMmMessageTemplate("payment_success")).toBe(false);
+  });
+});
+
+describe("cancellation schedule", () => {
+  it("formats the class date and time in India", () => {
+    const startsAt = new Date("2026-10-02T16:30:00.000Z");
+    expect(formatInDate(startsAt)).toBe("2 October 2026");
+    expect(formatInTime(startsAt)).toBe("10:00 PM");
   });
 });
 
