@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
-import { WhatsAppBusinessProvider, updateMessageStatus, failDisabledTemplateMessage, isTemplateDisabled, isNotificationChannelEnabled } from "@ru/notifications";
+import { WhatsAppBusinessProvider, updateMessageStatus, failDisabledTemplateMessage, isTemplateDisabled, isNotificationChannelEnabled, isMmOutboxWhatsApp } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
 
 const log = createLogger("cron:send-whatsapp");
@@ -31,7 +31,16 @@ async function handler(_request: NextRequest) {
     });
 
     const messages = await prisma.messageLog.findMany({
-      where: { channel: "WHATSAPP", status: "QUEUED" },
+      where: {
+        channel: "WHATSAPP",
+        status: "QUEUED",
+        NOT: {
+          OR: [
+            { body: { startsWith: "mm_no_live_session:" } },
+            { body: { startsWith: "session-reminder:" } },
+          ],
+        },
+      },
       orderBy: { createdAt: "asc" },
       take: 50,
       include: { template: { select: { name: true, isActive: true } } },
@@ -49,6 +58,10 @@ async function handler(_request: NextRequest) {
     const now = Date.now();
 
     for (const msg of messages) {
+      if (isMmOutboxWhatsApp(msg.body)) {
+        skipped++;
+        continue;
+      }
       if (isTemplateDisabled(msg.template)) {
         await failDisabledTemplateMessage(msg.id);
         skipped++;

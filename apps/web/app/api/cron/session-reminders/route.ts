@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createLogger } from "@ru/config";
-import { sendSessionReminders } from "@ru/notifications";
+import { drainMmOutbox, enqueueRecentCancellations, sendSessionReminders } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
 
 const log = createLogger("cron:session-reminders");
 
 async function handler(request: NextRequest) {
   try {
-    const sent = await sendSessionReminders();
+    await enqueueRecentCancellations();
+    const queued = await sendSessionReminders();
+    const drained = await drainMmOutbox();
 
-    log.info({ sent }, "Session reminders complete");
+    log.info({ queued, ...drained }, "Session reminders complete");
 
     return NextResponse.json({
       status: "ok",
-      sent,
+      queued,
+      ...drained,
     });
   } catch (error) {
     log.error({ err: error }, "Session reminders failed");
@@ -25,5 +28,6 @@ async function handler(request: NextRequest) {
 }
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 export const POST = withCronAuth(handler);
 export const GET = POST;
