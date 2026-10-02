@@ -6,9 +6,12 @@ import { deliverQueuedMmEmails } from "./flush-emails";
 import { sendPushForMessageLog } from "./send-push";
 import {
   firstName,
+  formatInDate,
+  formatInTime,
   joinTemplateForStartTime,
   meetCodeFromJoinUrl,
   MM,
+  programLabel,
 } from "./mm-templates";
 
 const log = createLogger("mm-outbox");
@@ -54,7 +57,10 @@ export async function withOutboxLock<T>(
 ): Promise<T> {
   return prisma.$transaction(
     async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key})::bigint)`;
+      await tx.$queryRaw`
+        SELECT 1 AS locked
+        FROM (SELECT pg_advisory_xact_lock(hashtext(${key})::bigint)) AS acquired
+      `;
       return run(tx);
     },
     { maxWait: 10_000, timeout: 20_000 },
@@ -184,7 +190,24 @@ async function whatsAppPayload(
 > {
   const name = firstName(userName);
   if (body.startsWith("mm_no_live_session:")) {
-    return { templateName: MM.NO_LIVE_SESSION, bodyValues: [name] };
+    const sessionId = body.slice("mm_no_live_session:".length).trim();
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      select: {
+        startsAt: true,
+        product: { select: { type: true } },
+      },
+    });
+    if (!session) return "drop";
+    return {
+      templateName: MM.NO_LIVE_SESSION,
+      bodyValues: [
+        name,
+        programLabel(session.product.type),
+        formatInDate(session.startsAt),
+        formatInTime(session.startsAt),
+      ],
+    };
   }
 
   const sessionId = body.slice("session-reminder:".length);
