@@ -3,6 +3,7 @@
 
 export interface EmailMessage {
   to: string;
+  bcc?: string[];
   subject: string;
   html?: string;
   text?: string;
@@ -139,6 +140,7 @@ export class ResendEmailProvider implements EmailProvider {
         body: JSON.stringify({
           from: message.from || this.defaultFrom,
           to: message.to,
+          ...(message.bcc && message.bcc.length > 0 ? { bcc: message.bcc } : {}),
           subject: message.subject,
           ...(html !== undefined ? { html } : {}),
           ...(message.text ? { text: message.text } : {}),

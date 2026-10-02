@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  classNoticeEmailKey,
   firstName,
   formatInDate,
   formatInTime,
+  isBulkClassEmail,
   isMmMessageTemplate,
   joinTemplateForStartTime,
   meetCodeFromJoinUrl,
   programLabel,
+  sharedClassEmailHtml,
   welcomeTemplateForSlug,
 } from "./mm-templates";
 
@@ -67,6 +70,22 @@ describe("isMmMessageTemplate", () => {
     expect(isMmMessageTemplate("mm_join_pranayama_8am")).toBe(true);
     expect(isMmMessageTemplate("mm_welcome_face_yoga_email")).toBe(true);
     expect(isMmMessageTemplate("payment_success")).toBe(false);
+  });
+});
+
+describe("bulk class email", () => {
+  it("groups a class notice and removes the personal greeting", () => {
+    const body =
+      "<p>Namaste Priya,</p><p>Due to unforeseen personal reasons, the live Face Yoga session on 2 October 2026 at 10:00 PM will not be held.</p><!-- mm_no_live_session:cmtltykr60003if04ntez2vcu -->";
+    expect(isBulkClassEmail("mm_no_live_session_email")).toBe(true);
+    expect(isBulkClassEmail("mm_join_face_yoga_9pm_email")).toBe(true);
+    expect(isBulkClassEmail("payment_success")).toBe(false);
+    expect(classNoticeEmailKey(body)).toBe(
+      "mm_no_live_session:cmtltykr60003if04ntez2vcu",
+    );
+    expect(sharedClassEmailHtml(body)).toBe(
+      "<p>Namaste,</p><p>Due to unforeseen personal reasons, the live Face Yoga session on 2 October 2026 at 10:00 PM will not be held.</p>",
+    );
   });
 });
 
