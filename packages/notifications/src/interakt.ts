@@ -71,6 +71,8 @@ export interface TemplateMessageParams {
    * Must match the number of variables in the approved template exactly.
    */
   bodyValues?: string[];
+  headerValues?: string[];
+  buttonValues?: Record<string, string[]>;
 }
 
 /**
@@ -322,6 +324,8 @@ export async function sendTemplate(params: TemplateMessageParams): Promise<boole
     templateName,
     languageCode = "en",
     bodyValues = [],
+    headerValues = [],
+    buttonValues,
   } = params;
 
   const payload = {
@@ -332,6 +336,9 @@ export async function sendTemplate(params: TemplateMessageParams): Promise<boole
       name: templateName,
       languageCode,
       ...(bodyValues.length > 0 && { bodyValues }),
+      ...(headerValues.length > 0 && { headerValues }),
+      ...(buttonValues &&
+        Object.keys(buttonValues).length > 0 && { buttonValues }),
     },
   };
 

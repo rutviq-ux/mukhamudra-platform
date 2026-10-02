@@ -100,6 +100,11 @@ const SCHEDULES = [
     cron: "0 3 * * 1",
     comment: "Weekly failed-payment health email to admin/ops",
   },
+  {
+    path: "/api/cron/renewal-reminders",
+    cron: "0 4 * * *",
+    comment: "Membership renewal WhatsApp and email, 7 days before period end",
+  },
 ];
 
 async function listExistingSchedules(): Promise<

@@ -180,6 +180,14 @@ export const whatsappRateLimitSchema = z.object({
 
 export type WhatsappRateLimitInput = z.infer<typeof whatsappRateLimitSchema>;
 
+export const notificationChannelsSchema = z.object({
+  whatsapp: z.boolean(),
+  email: z.boolean(),
+  push: z.boolean(),
+});
+
+export type NotificationChannelsInput = z.infer<typeof notificationChannelsSchema>;
+
 // Admin test message schema
 export const sendTestMessageSchema = z
   .object({
@@ -256,6 +264,7 @@ export const batchSchema = z.object({
     .nullable(),
   endsAt: z.coerce.date().optional().nullable(),
   isActive: z.boolean().default(true),
+  remindersEnabled: z.boolean().default(true),
 });
 
 export type BatchInput = z.infer<typeof batchSchema>;

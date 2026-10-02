@@ -4,6 +4,7 @@
  */
 
 import { prisma } from "@ru/db";
+import { MM_EMAIL_TEMPLATES } from "../../../packages/notifications/src/mm-templates";
 
 async function main() {
   console.log("🌱 Seeding database...\n");
@@ -1789,7 +1790,29 @@ async function main() {
     },
   });
 
-  console.log("✅ Message templates created (55 WhatsApp + 10 Email = 65 templates)\n");
+  for (const template of MM_EMAIL_TEMPLATES) {
+    await prisma.messageTemplate.upsert({
+      where: { name: template.name },
+      update: {
+        subject: template.subject,
+        body: template.body,
+        variables: template.variables,
+        isActive: true,
+        isTransactional: template.isTransactional,
+      },
+      create: {
+        channel: "EMAIL",
+        name: template.name,
+        subject: template.subject,
+        body: template.body,
+        variables: template.variables,
+        isActive: true,
+        isTransactional: template.isTransactional,
+      },
+    });
+  }
+
+  console.log("✅ Message templates created\n");
 
   console.log("🎉 Database seeded successfully!");
 }

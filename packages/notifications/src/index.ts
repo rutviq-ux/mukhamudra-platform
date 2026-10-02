@@ -3,6 +3,7 @@ export * from "./flush-emails";
 export * from "./providers/whatsapp";
 export * from "./providers/push";
 export * from "./audit";
+export * from "./channel-gates";
 export * from "./notify";
 export * from "./send-push";
 export * from "./group-actions";
@@ -11,3 +12,5 @@ export { sendWhatsApp } from "./send-whatsapp";
 export * from "./whatsapp-templates";
 
 export * from "./interakt-sync";
+export { sendTrialClassNotice, newNoticesEnabled } from "./mm-messages";
+export { isMmMessageTemplate } from "./mm-templates";
