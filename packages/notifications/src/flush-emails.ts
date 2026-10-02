@@ -15,6 +15,23 @@ import {
   type EmailProvider,
 } from "./providers/email";
 
+async function releaseMmEmail(
+  id: string,
+  retryCount: number,
+  error: string,
+): Promise<void> {
+  const retries = retryCount + 1;
+  await prisma.messageLog.update({
+    where: { id },
+    data: {
+      status: retries >= 3 ? "FAILED" : "QUEUED",
+      sentAt: null,
+      retryCount: retries,
+      error,
+    },
+  });
+}
+
 function resolveEmailProvider(): EmailProvider {
   const env = getServerEnv();
   if (env.RESEND_API_KEY) {
@@ -38,6 +55,52 @@ function resolveEmailProvider(): EmailProvider {
  * fire-and-forget. Uses the same optimistic-claim pattern as the cron so it
  * never double-sends if the cron races it.
  */
+export async function deliverQueuedMmEmails(limit: number): Promise<number> {
+  const provider = resolveEmailProvider();
+  const messages = await prisma.messageLog.findMany({
+    where: {
+      channel: "EMAIL",
+      status: "QUEUED",
+      template: { name: { startsWith: "mm_" } },
+    },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+
+  let sent = 0;
+  for (const msg of messages) {
+    const claimed = await prisma.messageLog.updateMany({
+      where: { id: msg.id, status: "QUEUED" },
+      data: { status: "SENT", sentAt: new Date() },
+    });
+    if (claimed.count === 0) continue;
+
+    try {
+      const result = await provider.send({
+        to: msg.to,
+        subject: msg.subject || "",
+        html: msg.body,
+        text: msg.body.replace(/<[^>]*>/g, ""),
+      });
+      if (result.success) {
+        await updateMessageStatus(msg.id, "SENT", {
+          providerMessageId: result.messageId,
+        });
+        sent++;
+      } else {
+        await releaseMmEmail(msg.id, msg.retryCount, result.error || "Email send failed");
+      }
+    } catch (error) {
+      await releaseMmEmail(
+        msg.id,
+        msg.retryCount,
+        error instanceof Error ? error.message : "flush failed",
+      );
+    }
+  }
+  return sent;
+}
+
 export async function flushQueuedEmailsForUser(userId: string): Promise<void> {
   const emailEnabled = await isNotificationChannelEnabled("EMAIL");
   const provider = resolveEmailProvider();
