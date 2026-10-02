@@ -10,6 +10,8 @@ import {
   isTemplateDisabled,
   isNotificationChannelEnabled,
   isMmMessageTemplate,
+  isBulkClassEmail,
+  BULK_CLASS_EMAILS,
   type EmailProvider,
 } from "@ru/notifications";
 import { withCronAuth } from "@/lib/cron-auth";
@@ -46,6 +48,7 @@ async function handler(request: NextRequest) {
       where: {
         channel: "EMAIL",
         status: "QUEUED",
+        NOT: { template: { name: { in: [...BULK_CLASS_EMAILS] } } },
       },
       include: { template: { select: { name: true, isActive: true } } },
       orderBy: { createdAt: "asc" },
@@ -62,6 +65,10 @@ async function handler(request: NextRequest) {
 
     for (const msg of messages) {
       try {
+        if (isBulkClassEmail(msg.template?.name)) {
+          skipped++;
+          continue;
+        }
         const mmMessage = isMmMessageTemplate(msg.template?.name);
         if (!mmMessage && !emailEnabled) {
           skipped++;
