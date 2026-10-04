@@ -10,10 +10,9 @@ interface RecordingAccessResult {
  * Check if a user has recording access.
  *
  * Recordings are included with all active Mukha Mudra memberships.
- * Any user with an active, non-expired membership gets access.
- * We check membership periodEnd directly rather than relying solely
- * on status, for the same reason as other purchase routes: the
- * expire-memberships cron only runs nightly.
+ * We trust status: "ACTIVE" the same way the Sessions page does —
+ * the expire-memberships cron handles flipping status nightly, so
+ * we do not need a redundant periodEnd check here.
  */
 export async function getRecordingAccessInfo(
   userId: string,
@@ -22,7 +21,6 @@ export async function getRecordingAccessInfo(
     where: {
       userId,
       status: "ACTIVE",
-      periodEnd: { gte: new Date() },
     },
   });
 
