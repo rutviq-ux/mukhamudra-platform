@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@ru/ui";
 import { Film, Lock, Play, Calendar, Loader2 } from "lucide-react";
-import { RecordingAddonCheckout } from "@/components/recording-addon-checkout";
 
 interface Recording {
   id: string;
@@ -30,56 +29,32 @@ export default function RecordingsPage() {
     let cancelled = false;
 
     async function fetchRecordings() {
-      // If returning from a successful add-on checkout, the webhook may still
-      // be in-flight — retry on 403 with backoff for up to ~10s.
-      const justPaid =
-        typeof window !== "undefined" &&
-        new URLSearchParams(window.location.search).has("addon");
-      const maxAttempts = justPaid ? 8 : 1;
-      const delays = [500, 1000, 1500, 1500, 1500, 1500, 1500, 2000];
+      try {
+        const res = await fetch("/api/recordings", { cache: "no-store" });
 
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        try {
-          const res = await fetch("/api/recordings", { cache: "no-store" });
-
-          if (res.status === 401) {
-            if (!cancelled) setNotLoggedIn(true);
-            return;
-          }
-
-          if (res.status === 403) {
-            if (attempt < maxAttempts - 1) {
-              await new Promise((r) => setTimeout(r, delays[attempt]));
-              continue;
-            }
-            if (!cancelled) setNoAccess(true);
-            return;
-          }
-
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || "Failed to load recordings");
-          }
-
-          const data = await res.json();
-          if (!cancelled) {
-            setRecordings(data.recordings);
-            setAccessInfo(data.accessInfo);
-
-            // Clean up the ?addon=1 hint from the URL once we've loaded
-            if (justPaid && typeof window !== "undefined") {
-              const url = new URL(window.location.href);
-              url.searchParams.delete("addon");
-              window.history.replaceState({}, "", url.toString());
-            }
-          }
+        if (res.status === 401) {
+          if (!cancelled) setNotLoggedIn(true);
           return;
-        } catch (err: any) {
-          if (attempt === maxAttempts - 1 && !cancelled) {
-            setError(err?.message ?? "Failed to load recordings. Please try again.");
-            return;
-          }
-          await new Promise((r) => setTimeout(r, delays[attempt] ?? 1500));
+        }
+
+        if (res.status === 403) {
+          if (!cancelled) setNoAccess(true);
+          return;
+        }
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to load recordings");
+        }
+
+        const data = await res.json();
+        if (!cancelled) {
+          setRecordings(data.recordings);
+          setAccessInfo(data.accessInfo);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message ?? "Failed to load recordings. Please try again.");
         }
       }
     }
@@ -143,11 +118,14 @@ export default function RecordingsPage() {
             </div>
             <CardTitle className="text-xl" style={{ fontFamily: "var(--font-display)" }}>Recording Access</CardTitle>
             <CardDescription>
-              Recording access is ₹1,000/year and is available to all active members (monthly or annual). Sign in and make sure your subscription is current, then add access below.
+              Recordings are included with all active Mukha Mudra memberships. Get a membership to access all your class recordings.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RecordingAddonCheckout />
+            <a href="/pricing"
+              className="inline-flex items-center justify-center rounded-md bg-[#C4883A] text-white px-6 py-2 text-sm font-medium hover:bg-[#d4984a] transition-colors">
+              Get a Membership
+            </a>
           </CardContent>
         </Card>
       </div>
@@ -170,12 +148,7 @@ export default function RecordingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-light tracking-wide" style={{ fontFamily: "var(--font-display)" }}>Recordings</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Recording Add-on
-            {accessInfo?.expiresAt && (
-              <> · expires {new Date(accessInfo.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</>
-            )}
-          </p>
+          <p className="text-muted-foreground mt-1 text-sm">Included with your membership</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-[#C4883A]">
           <Film className="w-4 h-4" />
