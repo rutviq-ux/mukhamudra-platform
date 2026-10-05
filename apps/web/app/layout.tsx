@@ -44,6 +44,7 @@ const notoDevanagari = Noto_Sans_Devanagari({
   weight: ["400", "700"],
   variable: "--font-devanagari",
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
