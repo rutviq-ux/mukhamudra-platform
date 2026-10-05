@@ -17,6 +17,7 @@
   "dependencies": {
     "@ru/config": "workspace:*",
     "@ru/db": "workspace:*",
+    "google-auth-library": "^9.15.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
