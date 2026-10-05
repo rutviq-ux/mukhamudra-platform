@@ -45,6 +45,9 @@ export default function SignInPage() {
                             <>
                               <Clerk.Icon className="mr-2 h-4 w-4" />
                               Continue with Google
+                              <span className="ml-auto text-xs bg-[rgba(196,136,58,0.12)] text-[#C4883A] border border-[rgba(196,136,58,0.25)] px-2 py-0.5 rounded-full font-medium">
+                                Recommended
+                              </span>
                             </>
                           )
                         }
