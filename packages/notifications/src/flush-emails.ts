@@ -57,12 +57,8 @@ function resolveEmailProvider(): EmailProvider {
 }
 
 const BCC_CHUNK = 49;
-
-function studioMailbox(): string {
-  const from = getServerEnv().RESEND_FROM_EMAIL;
-  const named = from.match(/<([^>]+)>/);
-  return (named?.[1] ?? from).trim();
-}
+const CLASS_FROM = "Mukha Mudra <classes@mukhamudra.com>";
+const CLASS_MAILBOX = "classes@mukhamudra.com";
 
 async function deliverBulkClassEmails(provider: EmailProvider): Promise<number> {
   const messages = await prisma.messageLog.findMany({
@@ -87,7 +83,7 @@ async function deliverBulkClassEmails(provider: EmailProvider): Promise<number> 
   for (const group of groups.values()) {
     if (provider.name !== "resend") {
       for (const msg of group) {
-        sent += await sendOneMmEmail(provider, msg);
+        sent += await sendOneMmEmail(provider, msg, CLASS_FROM);
       }
       continue;
     }
@@ -106,7 +102,7 @@ async function sendClassEmailBcc(
     retryCount: number;
   }[],
 ): Promise<number> {
-  const studio = studioMailbox().toLowerCase();
+  const studio = CLASS_MAILBOX;
   const byEmail = new Map<string, typeof group>();
   for (const msg of group) {
     const address = msg.to.trim().toLowerCase();
@@ -138,7 +134,8 @@ async function sendClassEmailBcc(
     const bcc = [...new Set(pending.map((row) => row.to.trim().toLowerCase()))];
     try {
       const result = await provider.send({
-        to: studioMailbox(),
+        from: CLASS_FROM,
+        to: CLASS_MAILBOX,
         bcc,
         subject: pending[0]?.subject || "",
         html,
@@ -174,6 +171,7 @@ async function sendOneMmEmail(
     body: string;
     retryCount: number;
   },
+  from?: string,
 ): Promise<number> {
   const claimed = await prisma.messageLog.updateMany({
     where: { id: msg.id, status: "QUEUED" },
@@ -183,6 +181,7 @@ async function sendOneMmEmail(
 
   try {
     const result = await provider.send({
+      from,
       to: msg.to,
       subject: msg.subject || "",
       html: msg.body,
