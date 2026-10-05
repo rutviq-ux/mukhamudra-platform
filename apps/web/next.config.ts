@@ -1,5 +1,7 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+// @ts-expect-error plugin has no type declarations
+import { PrismaPlugin } from "@prisma/nextjs-monorepo-workaround-plugin";
 import { withSentryConfig } from "@sentry/nextjs";
 import createNextIntlPlugin from "next-intl/plugin";
 
@@ -70,6 +72,12 @@ const nextConfig: NextConfig = {
         hostname: "localhost",
       },
     ],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.plugins.push(new PrismaPlugin());
+    }
+    return config;
   },
 };
 
