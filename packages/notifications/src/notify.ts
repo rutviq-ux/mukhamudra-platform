@@ -327,7 +327,7 @@ export async function notifyBundleWelcome(opts: {
  */
 export async function sendSessionReminders(): Promise<number> {
   const now = new Date();
-  const reminderWindowEnd = new Date(now.getTime() + 16 * 60_000);
+  const reminderWindowEnd = new Date(now.getTime() + 20 * 60_000);
 
   await ensureMmEmailTemplates();
 
@@ -336,7 +336,7 @@ export async function sendSessionReminders(): Promise<number> {
       status: "SCHEDULED",
       startsAt: {
         gt: now,
-        lt: reminderWindowEnd,
+        lte: reminderWindowEnd,
       },
     },
     include: {

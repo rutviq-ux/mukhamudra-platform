@@ -6,7 +6,7 @@ const GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/
 
 export const CLASS_MAILBOX = "classes@mukhamudra.com";
 export const CLASS_FROM = "Mukha Mudra <classes@mukhamudra.com>";
-export const GMAIL_BCC_CHUNK = 499;
+export const GMAIL_BCC_CHUNK = 50;
 
 export type ClassGmailConfig = {
   serviceAccountEmail: string;
@@ -35,7 +35,7 @@ export function buildClassMailRaw(input: {
   const lines = [
     `From: ${input.from}`,
     `To: ${input.to}`,
-    foldHeader("Bcc", input.bcc.join(", ")),
+    foldBccHeader(input.bcc),
     `Subject: ${encodeSubject(input.subject)}`,
     "MIME-Version: 1.0",
     'Content-Type: text/html; charset="UTF-8"',
@@ -100,16 +100,23 @@ export async function sendClassMailViaGmail(
   };
 }
 
-function foldHeader(name: string, value: string): string {
-  const raw = `${name}: ${value}`;
-  const parts: string[] = [];
-  let rest = raw;
-  while (rest.length > 78) {
-    parts.push(rest.slice(0, 78));
-    rest = ` ${rest.slice(78)}`;
+function foldBccHeader(addresses: string[]): string {
+  const limit = 78;
+  const lines: string[] = [];
+  let line = "Bcc:";
+  for (let i = 0; i < addresses.length; i++) {
+    const address = addresses[i];
+    const comma = i < addresses.length - 1 ? "," : "";
+    const next = line === "Bcc:" ? `Bcc: ${address}${comma}` : `${line} ${address}${comma}`;
+    if (line !== "Bcc:" && next.length > limit) {
+      lines.push(line);
+      line = ` ${address}${comma}`;
+    } else {
+      line = next;
+    }
   }
-  parts.push(rest);
-  return parts.join("\r\n");
+  if (line !== "Bcc:") lines.push(line);
+  return lines.join("\r\n");
 }
 
 function encodeSubject(subject: string): string {

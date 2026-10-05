@@ -38,7 +38,7 @@ const SCHEDULES = [
   {
     path: "/api/cron/session-reminders",
     cron: "* * * * *", // Every minute
-    comment: "Send 15-min-before session reminders",
+    comment: "Send session reminders from 20 minutes before class",
   },
   {
     path: "/api/cron/send-emails",

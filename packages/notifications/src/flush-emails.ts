@@ -86,12 +86,14 @@ async function deliverBulkClassEmails(provider: EmailProvider): Promise<number> 
   }
 
   const gmail = classGmailConfig();
+  if (gmail) {
+    const group = groups.values().next().value;
+    if (!group) return 0;
+    return sendClassEmailGmail(gmail, provider, group);
+  }
+
   let sent = 0;
   for (const group of groups.values()) {
-    if (gmail) {
-      sent += await sendClassEmailGmail(gmail, provider, group);
-      continue;
-    }
     if (provider.name !== "resend") {
       for (const msg of group) {
         sent += await sendOneMmEmail(provider, msg, CLASS_FROM);
@@ -152,7 +154,7 @@ async function sendClassEmailGmail(
           data: { providerMessageId: result.messageId, status: "SENT" },
         });
         sent += bcc.length;
-        continue;
+        return sent;
       }
       if (result.authError && provider.name === "resend") {
         let fallbackError = result.error;
@@ -186,16 +188,18 @@ async function sendClassEmailGmail(
           if (succeeded.has(row.id)) continue;
           await releaseMmEmail(row.id, row.retryCount, fallbackError);
         }
-        continue;
+        return sent;
       }
       for (const row of pending) {
         await releaseMmEmail(row.id, row.retryCount, result.error);
       }
+      return sent;
     } catch (error) {
       const message = error instanceof Error ? error.message : "flush failed";
       for (const row of pending) {
         await releaseMmEmail(row.id, row.retryCount, message);
       }
+      return sent;
     }
   }
   return sent;
