@@ -94,8 +94,8 @@ export async function createQueuedLogs(
 export async function drainMmOutbox(
   limit = MM_OUTBOX_BATCH,
 ): Promise<{ whatsapp: number; email: number; push: number }> {
-  const whatsapp = await drainOutboxWhatsApp(limit);
   const email = await deliverQueuedMmEmails(limit);
+  const whatsapp = await drainOutboxWhatsApp(limit);
   const push = await drainOutboxPush(limit);
   log.info({ whatsapp, email, push, limit }, "Drained queued class notices");
   return { whatsapp, email, push };
