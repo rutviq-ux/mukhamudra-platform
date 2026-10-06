@@ -16,6 +16,7 @@ import {
 } from "./mm-messages";
 import {
   MM,
+  cancellationNoticePhrases,
   firstName,
   formatInDate,
   formatInTime,
@@ -916,9 +917,12 @@ export async function notifyNoLiveSession(sessionId: string): Promise<void> {
     const time = formatInTime(session.startsAt);
     const legacyType = session.batch?.name || session.title || "class";
     const marker = `${MM.NO_LIVE_SESSION}:${sessionId}`;
-    const phrase = `live ${classType} session on ${date}`;
-    const previousPhrase = `no live ${classType} class on ${date}`;
-    const legacyPhrase = `no live ${legacyType} class on ${date}`;
+    const [phrase, previousPhrase, legacyPhrase] = cancellationNoticePhrases({
+      classType,
+      date,
+      time,
+      legacyType,
+    });
     const recipients = [...(await sessionRecipients(session)).values()];
     if (recipients.length === 0) return;
 

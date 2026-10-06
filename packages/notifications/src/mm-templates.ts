@@ -134,6 +134,20 @@ export function programLabel(productType: string): string {
   }
 }
 
+/** Phrases that mean this exact class slot was already announced. Time is included so 8:00 and 9:00 on the same day stay separate. */
+export function cancellationNoticePhrases(opts: {
+  classType: string;
+  date: string;
+  time: string;
+  legacyType: string;
+}): [string, string, string] {
+  return [
+    `live ${opts.classType} session on ${opts.date} at ${opts.time}`,
+    `no live ${opts.classType} class on ${opts.date} at ${opts.time}`,
+    `no live ${opts.legacyType} class on ${opts.date} at ${opts.time}`,
+  ];
+}
+
 export function formatInDate(date: Date): string {
   return date.toLocaleDateString("en-IN", {
     day: "numeric",
