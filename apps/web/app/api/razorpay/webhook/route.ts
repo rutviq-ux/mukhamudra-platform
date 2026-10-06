@@ -291,6 +291,7 @@ async function handlePaymentCaptured(payload: any) {
           userId: order.userId,
           orderId: order.id,
           planName: order.plan.name,
+          planSlug: order.plan.slug,
           amount: (order.amountPaise / 100).toLocaleString("en-IN"),
         }).catch((err) =>
           log.error({ err }, "Failed to queue payment confirmation notification"),

@@ -258,6 +258,7 @@ async function handler(request: NextRequest) {
               userId: order.userId,
               orderId: order.id,
               planName: order.plan.name,
+              planSlug: order.plan.slug,
               amount: (order.amountPaise / 100).toLocaleString("en-IN"),
             }).catch((err) =>
               log.error({ err }, "Sync: failed to queue payment notification"),

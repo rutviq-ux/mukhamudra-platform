@@ -10,6 +10,7 @@ import {
   meetCodeFromJoinUrl,
   programLabel,
   sharedClassEmailHtml,
+  welcomeTemplateForPlanName,
   welcomeTemplateForSlug,
 } from "./mm-templates";
 
@@ -54,6 +55,17 @@ describe("welcomeTemplateForSlug", () => {
     );
     expect(welcomeTemplateForSlug("bundle-annual")).toBe("mm_welcome_bundle");
     expect(welcomeTemplateForSlug("recording-addon")).toBeNull();
+  });
+
+  it("maps plan display names", () => {
+    expect(welcomeTemplateForPlanName("Face Yoga Annual")).toBe(
+      "mm_welcome_face_yoga",
+    );
+    expect(welcomeTemplateForPlanName("Bundle Annual")).toBe("mm_welcome_bundle");
+    expect(welcomeTemplateForPlanName("Pranayama Monthly")).toBe(
+      "mm_welcome_pranayama",
+    );
+    expect(welcomeTemplateForPlanName("Recording Access")).toBeNull();
   });
 });
 

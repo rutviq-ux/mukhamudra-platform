@@ -111,6 +111,16 @@ export function welcomeTemplateForSlug(slug: string): string | null {
   return null;
 }
 
+export function welcomeTemplateForPlanName(planName: string): string | null {
+  const planLower = planName.toLowerCase();
+  if (planLower.includes("face yoga + pranayama") || planLower.includes("bundle")) {
+    return MM.WELCOME_BUNDLE;
+  }
+  if (planLower.includes("face yoga")) return MM.WELCOME_FACE_YOGA;
+  if (planLower.includes("pranayama")) return MM.WELCOME_PRANAYAMA;
+  return null;
+}
+
 export function programLabel(productType: string): string {
   switch (productType) {
     case "FACE_YOGA":
