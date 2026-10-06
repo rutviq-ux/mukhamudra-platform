@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cancellationNoticePhrases,
   classNoticeEmailKey,
   firstName,
   formatInDate,
@@ -97,6 +98,23 @@ describe("bulk class email", () => {
     );
     expect(sharedClassEmailHtml(body)).toBe(
       "<p>Namaste,</p><p>Due to unforeseen personal reasons, the live Face Yoga session on 2 October 2026 at 10:00 PM will not be held.</p>",
+    );
+  });
+});
+
+describe("cancellationNoticePhrases", () => {
+  it("keeps the 8:00 and 9:00 notices from matching each other", () => {
+    const eight = cancellationNoticePhrases({
+      classType: "Pranayama",
+      date: "7 October 2026",
+      time: "8:00 AM",
+      legacyType: "8 AM Batch",
+    });
+    const nineBody =
+      "<p>Due to unforeseen personal reasons, the live Pranayama session on 7 October 2026 at 9:00 AM will not be held.</p>";
+    expect(nineBody.includes(eight[0])).toBe(false);
+    expect(nineBody.includes("live Pranayama session on 7 October 2026 at 9:00 AM")).toBe(
+      true,
     );
   });
 });
