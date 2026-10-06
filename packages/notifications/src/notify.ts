@@ -6,6 +6,7 @@ import { createLogger } from "@ru/config";
 import { logMessage } from "./audit";
 import { isNotificationChannelEnabled } from "./channel-gates";
 import { sendWhatsApp } from "./send-whatsapp";
+import { formatPhone } from "./interakt";
 import { createQueuedLogs, fillTemplate, withOutboxLock } from "./mm-outbox";
 import {
   deliverInteraktTemplate,
@@ -22,6 +23,7 @@ import {
   joinTemplateForStartTime,
   meetCodeFromJoinUrl,
   programLabel,
+  welcomeTemplateForPlanName,
   welcomeTemplateForSlug,
 } from "./mm-templates";
 
@@ -237,6 +239,7 @@ export async function notifyPaymentSuccess(opts: {
   orderId: string;
   planName: string;
   amount: string;
+  planSlug?: string;
 }): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: opts.userId },
@@ -250,29 +253,27 @@ export async function notifyPaymentSuccess(opts: {
     amount: opts.amount,
   };
 
-  // Select plan-specific email template based on which program was purchased
-    const planLower = opts.planName.toLowerCase();
-    let emailTemplateName = "payment_success"; // fallback for unknown plans
-    if (planLower.includes("face yoga + pranayama") || planLower.includes("bundle")) {
-          emailTemplateName = "payment_success_bundle";
-    } else if (planLower.includes("face yoga")) {
-          emailTemplateName = "payment_success_face_yoga";
-    } else if (planLower.includes("pranayama")) {
-          emailTemplateName = "payment_success_pranayama";
-    }
-  
-  await Promise.all([
-    queueNotification({
-      userId: opts.userId,
-      templateName: "payment_success_wa",
-      variables,
-    }),
-    queueNotification({
-      userId: opts.userId,
-      templateName: emailTemplateName,
-      variables,
-    }),
-  ]);
+  const planLower = opts.planName.toLowerCase();
+  let emailTemplateName = "payment_success";
+  if (planLower.includes("face yoga + pranayama") || planLower.includes("bundle")) {
+    emailTemplateName = "payment_success_bundle";
+  } else if (planLower.includes("face yoga")) {
+    emailTemplateName = "payment_success_face_yoga";
+  } else if (planLower.includes("pranayama")) {
+    emailTemplateName = "payment_success_pranayama";
+  }
+
+  await queueNotification({
+    userId: opts.userId,
+    templateName: emailTemplateName,
+    variables,
+  });
+
+  await sendPaymentWhatsApp({
+    userId: opts.userId,
+    planSlug: opts.planSlug,
+    planName: opts.planName,
+  });
 }
 
 export async function notifyRecordingAddonPurchased(opts: {
@@ -721,42 +722,104 @@ export async function sendPlanWelcome(opts: {
     where: { name: `${templateName}_email` },
     select: { id: true },
   });
-  const alreadySent = await prisma.messageLog.findFirst({
-    where: {
-      userId: opts.userId,
-      createdAt: { gte: since },
-      status: { in: ["QUEUED", "SENT", "DELIVERED"] },
-      OR: [
-        { channel: "WHATSAPP", body: templateName },
-        ...(emailTemplate ? [{ templateId: emailTemplate.id }] : []),
-      ],
-    },
-    select: { id: true },
+  const emailAlreadySent = emailTemplate
+    ? await prisma.messageLog.findFirst({
+        where: {
+          userId: opts.userId,
+          templateId: emailTemplate.id,
+          createdAt: { gte: since },
+          status: { in: ["QUEUED", "SENT", "DELIVERED"] },
+        },
+        select: { id: true },
+      })
+    : null;
+
+  await sendPaymentWhatsApp({
+    userId: opts.userId,
+    planSlug: opts.planSlug,
   });
-  if (alreadySent) return;
+
+  if (emailAlreadySent) return;
 
   const user = await prisma.user.findUnique({
     where: { id: opts.userId },
-    select: { name: true, phone: true, whatsappOptIn: true },
+    select: { name: true },
   });
-  const name = firstName(user?.name);
-
-  if (user?.phone && user.whatsappOptIn) {
-    await deliverInteraktTemplate({
-      rawPhone: user.phone,
-      logTo: user.phone,
-      userId: opts.userId,
-      templateName,
-      bodyValues: [name],
-      logBody: templateName,
-    });
-  }
 
   await queueNotification({
     userId: opts.userId,
     templateName: `${templateName}_email`,
-    variables: { name },
+    variables: { name: firstName(user?.name) },
   });
+}
+
+async function sendPaymentWhatsApp(opts: {
+  userId: string;
+  planSlug?: string;
+  planName?: string;
+}): Promise<void> {
+  const templateName =
+    (opts.planSlug ? welcomeTemplateForSlug(opts.planSlug) : null) ??
+    (opts.planName ? welcomeTemplateForPlanName(opts.planName) : null);
+  if (!templateName) return;
+
+  await withOutboxLock(`mm-welcome-wa:${opts.userId}:${templateName}`, async () => {
+    const since = new Date(Date.now() - 24 * 60 * 60_000);
+    const alreadySent = await prisma.messageLog.findFirst({
+      where: {
+        userId: opts.userId,
+        channel: "WHATSAPP",
+        body: templateName,
+        createdAt: { gte: since },
+        status: { in: ["QUEUED", "SENT", "DELIVERED"] },
+      },
+      select: { id: true },
+    });
+    if (alreadySent) return;
+
+    const recipient = await resolveWhatsAppPhone(opts.userId);
+    if (!recipient) {
+      log.warn({ userId: opts.userId, templateName }, "Skipping payment WhatsApp, no phone");
+      return;
+    }
+
+    await deliverInteraktTemplate({
+      rawPhone: recipient.phone,
+      logTo: recipient.phone,
+      userId: opts.userId,
+      templateName,
+      bodyValues: [firstName(recipient.name)],
+      logBody: templateName,
+    });
+  });
+}
+
+async function resolveWhatsAppPhone(
+  userId: string,
+): Promise<{ phone: string; name: string | null } | null> {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, phone: true, email: true },
+    });
+    if (user?.phone && formatPhone(user.phone)) {
+      return { phone: user.phone, name: user.name };
+    }
+    if (attempt === 0 && user?.email) {
+      const lead = await prisma.lead.findFirst({
+        where: { email: user.email },
+        orderBy: { createdAt: "desc" },
+        select: { phone: true },
+      });
+      if (lead?.phone && formatPhone(lead.phone)) {
+        return { phone: lead.phone, name: user.name };
+      }
+    }
+    if (attempt < 3) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+  return null;
 }
 
 export async function sendPrePaymentNotice(opts: {
