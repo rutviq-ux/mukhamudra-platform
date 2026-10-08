@@ -14,14 +14,7 @@ import {
   isMmMessageTemplate,
   sharedClassEmailHtml,
 } from "./mm-templates";
-import {
-  CLASS_FROM,
-  CLASS_MAILBOX,
-  classGmailConfig,
-  GMAIL_BCC_CHUNK,
-  sendClassMailViaGmail,
-  type ClassGmailConfig,
-} from "./gmail-class-mail";
+import { CLASS_BCC_CHUNK, CLASS_FROM, CLASS_MAILBOX } from "./class-mail";
 import {
   ResendEmailProvider,
   ListmonkEmailProvider,
@@ -64,8 +57,6 @@ function resolveEmailProvider(): EmailProvider {
   return new ConsoleEmailProvider();
 }
 
-const BCC_CHUNK = 49;
-
 async function deliverBulkClassEmails(provider: EmailProvider): Promise<number> {
   const messages = await prisma.messageLog.findMany({
     where: {
@@ -85,13 +76,6 @@ async function deliverBulkClassEmails(provider: EmailProvider): Promise<number> 
     groups.set(key, group);
   }
 
-  const gmail = classGmailConfig();
-  if (gmail) {
-    const group = groups.values().next().value;
-    if (!group) return 0;
-    return sendClassEmailGmail(gmail, provider, group);
-  }
-
   let sent = 0;
   for (const group of groups.values()) {
     if (provider.name !== "resend") {
@@ -101,106 +85,6 @@ async function deliverBulkClassEmails(provider: EmailProvider): Promise<number> 
       continue;
     }
     sent += await sendClassEmailBcc(provider, group);
-  }
-  return sent;
-}
-
-async function sendClassEmailGmail(
-  gmail: ClassGmailConfig,
-  provider: EmailProvider,
-  group: {
-    id: string;
-    to: string;
-    subject: string | null;
-    body: string;
-    retryCount: number;
-  }[],
-): Promise<number> {
-  const byEmail = new Map<string, typeof group>();
-  for (const msg of group) {
-    const address = msg.to.trim().toLowerCase();
-    if (!address || address === CLASS_MAILBOX) continue;
-    const rows = byEmail.get(address) ?? [];
-    rows.push(msg);
-    byEmail.set(address, rows);
-  }
-
-  let sent = 0;
-  const addresses = [...byEmail.keys()];
-  for (let i = 0; i < addresses.length; i += GMAIL_BCC_CHUNK) {
-    const chunk = addresses.slice(i, i + GMAIL_BCC_CHUNK);
-    const rows = chunk.flatMap((address) => byEmail.get(address) ?? []);
-    const ids = rows.map((row) => row.id);
-    const pending = await prisma.messageLog.findMany({
-      where: { id: { in: ids }, status: "QUEUED" },
-      select: { id: true, to: true, retryCount: true, body: true, subject: true },
-    });
-    if (pending.length === 0) continue;
-    const pendingIds = pending.map((row) => row.id);
-    const claimed = await prisma.messageLog.updateMany({
-      where: { id: { in: pendingIds }, status: "QUEUED" },
-      data: { status: "SENT", sentAt: new Date() },
-    });
-    if (claimed.count === 0) continue;
-
-    const html = sharedClassEmailHtml(pending[0]?.body ?? "");
-    const bcc = [...new Set(pending.map((row) => row.to.trim().toLowerCase()))];
-    const subject = pending[0]?.subject || "";
-    try {
-      const result = await sendClassMailViaGmail(gmail, { bcc, subject, html });
-      if (result.ok) {
-        await prisma.messageLog.updateMany({
-          where: { id: { in: pendingIds } },
-          data: { providerMessageId: result.messageId, status: "SENT" },
-        });
-        sent += bcc.length;
-        return sent;
-      }
-      if (result.authError && provider.name === "resend") {
-        let fallbackError = result.error;
-        const succeeded = new Set<string>();
-        for (let j = 0; j < bcc.length; j += BCC_CHUNK) {
-          const slice = bcc.slice(j, j + BCC_CHUNK);
-          const sliceRows = pending.filter((row) =>
-            slice.includes(row.to.trim().toLowerCase()),
-          );
-          const fallback = await provider.send({
-            from: CLASS_FROM,
-            to: CLASS_MAILBOX,
-            bcc: slice,
-            subject,
-            html,
-            text: html.replace(/<[^>]*>/g, ""),
-          });
-          if (!fallback.success) {
-            fallbackError = fallback.error || fallbackError;
-            continue;
-          }
-          const sliceIds = sliceRows.map((row) => row.id);
-          await prisma.messageLog.updateMany({
-            where: { id: { in: sliceIds } },
-            data: { providerMessageId: fallback.messageId, status: "SENT" },
-          });
-          for (const id of sliceIds) succeeded.add(id);
-          sent += slice.length;
-        }
-        for (const row of pending) {
-          if (succeeded.has(row.id)) continue;
-          await releaseMmEmail(row.id, row.retryCount, fallbackError);
-        }
-        return sent;
-      }
-      for (const row of pending) {
-        await releaseMmEmail(row.id, row.retryCount, result.error);
-      }
-      return sent;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "flush failed";
-      for (const row of pending) {
-        await releaseMmEmail(row.id, row.retryCount, message);
-      }
-      return sent;
-    }
   }
   return sent;
 }
@@ -227,8 +111,8 @@ async function sendClassEmailBcc(
 
   let sent = 0;
   const addresses = [...byEmail.keys()];
-  for (let i = 0; i < addresses.length; i += BCC_CHUNK) {
-    const chunk = addresses.slice(i, i + BCC_CHUNK);
+  for (let i = 0; i < addresses.length; i += CLASS_BCC_CHUNK) {
+    const chunk = addresses.slice(i, i + CLASS_BCC_CHUNK);
     const rows = chunk.flatMap((address) => byEmail.get(address) ?? []);
     const ids = rows.map((row) => row.id);
     const pending = await prisma.messageLog.findMany({
