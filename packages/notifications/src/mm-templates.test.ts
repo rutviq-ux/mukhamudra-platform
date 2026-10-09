@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cancellationNoticePhrases,
   classNoticeEmailKey,
+  MM_EMAIL_TEMPLATES,
   firstName,
   formatInDate,
   formatInTime,
@@ -99,6 +100,27 @@ describe("bulk class email", () => {
     expect(sharedClassEmailHtml(body)).toBe(
       "<p>Namaste,</p><p>Due to unforeseen personal reasons, the live Face Yoga session on 2 October 2026 at 10:00 PM will not be held.</p>",
     );
+  });
+});
+
+describe("email templates match WhatsApp copy", () => {
+  function body(name: string): string {
+    return MM_EMAIL_TEMPLATES.find((template) => template.name === name)?.body ?? "";
+  }
+
+  it("uses the WhatsApp class wording", () => {
+    expect(body("mm_welcome_face_yoga_email")).toContain(
+      "For non-Indian numbers, links will be shared on email only.",
+    );
+    expect(body("mm_welcome_face_yoga_email")).toContain(
+      "https://www.amazon.in/dp/B0B8T59777",
+    );
+    expect(body("mm_join_pranayama_8am_email")).toContain("Nadi Shuddhi");
+    expect(body("mm_join_face_yoga_9pm_email")).toContain("Face Mudras");
+    expect(body("mm_no_live_session_email")).toContain(
+      "https://www.mukhamudra.com/app/recordings",
+    );
+    expect(body("mm_trial_class_email")).toContain("aEG2lSN3lHM");
   });
 });
 
