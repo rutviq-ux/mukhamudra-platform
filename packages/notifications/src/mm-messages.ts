@@ -10,14 +10,11 @@ export async function ensureMmEmailTemplates(): Promise<void> {
   for (const template of MM_EMAIL_TEMPLATES) {
     await prisma.messageTemplate.upsert({
       where: { name: template.name },
-      update:
-        template.name === "mm_no_live_session_email"
-          ? {
-              subject: template.subject,
-              body: template.body,
-              variables: template.variables,
-            }
-          : {},
+      update: {
+        subject: template.subject,
+        body: template.body,
+        variables: template.variables,
+      },
       create: {
         channel: "EMAIL",
         name: template.name,
