@@ -17,7 +17,7 @@
  * ─── Events Interakt sends ────────────────────────────────────────────────────
  *
  *   message_status   — delivery/read/failed receipts for templates we send
- *   inbound_message  — when a member replies to our WhatsApp message
+ *   message_received — a customer reply. First reply gets mm_pre_payment_info.
  *   user_opted_out   — member blocks or opts out of WhatsApp
  *
  * ─── FILE LOCATION ────────────────────────────────────────────────────────────
@@ -28,7 +28,9 @@
  *   INTERAKT_WEBHOOK_SECRET  — from Interakt dashboard → Developer Settings → Configure Webhook
  */
 
+import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
+import { sendPrePaymentNotice } from "@ru/notifications";
 import { NextRequest, NextResponse } from "next/server";
 
 const log = createLogger("interakt-webhook");
@@ -36,8 +38,22 @@ const log = createLogger("interakt-webhook");
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface InteraktWebhookPayload {
-  type: "message_status" | "inbound_message" | "user_opted_out" | string;
-  payload: Record<string, unknown>;
+  type: "message_status" | "inbound_message" | "message_received" | "user_opted_out" | string;
+  payload?: Record<string, unknown>;
+  data?: {
+    customer?: {
+      channel_phone_number?: string;
+      phone_number?: string;
+      country_code?: string;
+      traits?: { name?: string };
+    };
+    message?: {
+      message?: string;
+      message_content_type?: string;
+      chat_message_type?: string;
+      is_template_message?: boolean;
+    };
+  };
 }
 
 interface MessageStatusPayload {
@@ -147,17 +163,73 @@ async function handleMessageStatus(payload: MessageStatusPayload) {
   }
 }
 
-async function handleInboundMessage(payload: InboundMessagePayload) {
-  const { from, message } = payload;
+function phoneVariants(digits: string): string[] {
+  const local = digits.slice(-10);
+  return [...new Set([digits, `+${digits}`, local, `+91${local}`])];
+}
 
-  log.info(
-    { phone: from.phone_number, messageType: message.type, text: message.text },
-    "[Interakt Webhook] Inbound WhatsApp message received",
-  );
+function readCustomerReply(event: InteraktWebhookPayload): {
+  phone: string;
+  text: string;
+  name?: string;
+} | null {
+  if (event.type === "message_received") {
+    const customer = event.data?.customer;
+    const message = event.data?.message;
+    const phone = String(customer?.channel_phone_number ?? "").replace(/\D/g, "");
+    if (!phone) return null;
+    if (message?.is_template_message) return null;
+    if (message?.chat_message_type && message.chat_message_type !== "CustomerMessage") {
+      return null;
+    }
+    const name = customer?.traits?.name?.trim();
+    return { phone, text: message?.message ?? "", name: name || undefined };
+  }
 
-  // TODO (Phase 2): auto-reply, route to support, or log in CRM
-  // For now this just records that a member replied — Haripriya can
-  // handle responses manually from the Interakt inbox.
+  if (event.type === "inbound_message" && event.payload) {
+    const payload = event.payload as unknown as InboundMessagePayload;
+    const country = String(payload.from?.country_code ?? "").replace(/\D/g, "");
+    const local = String(payload.from?.phone_number ?? "").replace(/\D/g, "");
+    const phone = `${country}${local}`;
+    if (!phone) return null;
+    return { phone, text: payload.message?.text ?? "" };
+  }
+
+  return null;
+}
+
+async function handleInboundMessage(reply: { phone: string; text: string; name?: string }) {
+  const text = reply.text.trim().toLowerCase();
+  if (text === "stop" || text === "unsubscribe" || text === "opt out" || text === "start" || text === "subscribe") {
+    return;
+  }
+
+  log.info({ phone: reply.phone }, "[Interakt Webhook] Inbound WhatsApp message received");
+
+  const alreadyReplied = await prisma.messageLog.findFirst({
+    where: {
+      channel: "WHATSAPP",
+      to: { in: phoneVariants(reply.phone) },
+      OR: [
+        { body: "mukhamudra_cold_inquiry" },
+        { body: "mm_pre_payment_info", status: { in: ["SENT", "DELIVERED"] } },
+      ],
+    },
+    select: { id: true },
+  });
+  if (alreadyReplied) return;
+
+  const user = await prisma.user.findFirst({
+    where: { phone: { endsWith: reply.phone.slice(-10) } },
+    select: { id: true, name: true },
+  });
+
+  await sendPrePaymentNotice({
+    rawPhone: reply.phone,
+    logTo: reply.phone,
+    userId: user?.id,
+    profileName: user?.name || reply.name,
+  });
 }
 
 async function handleUserOptedOut(payload: UserOptedOutPayload) {
@@ -210,9 +282,12 @@ export async function POST(req: NextRequest) {
       case "message_status":
         await handleMessageStatus(event.payload as unknown as MessageStatusPayload);
         break;
-      case "inbound_message":
-        await handleInboundMessage(event.payload as unknown as InboundMessagePayload);
+      case "message_received":
+      case "inbound_message": {
+        const reply = readCustomerReply(event);
+        if (reply) await handleInboundMessage(reply);
         break;
+      }
       case "user_opted_out":
         await handleUserOptedOut(event.payload as unknown as UserOptedOutPayload);
         break;
