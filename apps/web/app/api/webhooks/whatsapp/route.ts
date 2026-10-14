@@ -10,6 +10,10 @@ import crypto from "crypto";
 import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { sendPrePaymentNotice } from "@ru/notifications";
+import {
+  findUserForInboundPhone,
+  hasPrePaymentWhatsAppBeenSent,
+} from "@/lib/whatsapp-inbound";
 
 const log = createLogger("webhook-whatsapp");
 
@@ -102,13 +106,7 @@ async function handleIncomingMessage(message: any, contact: any) {
 
   log.info({ from, msgType, text: text.substring(0, 50) }, "Incoming WhatsApp message");
 
-  // Find the user by phone number
-  const user = await prisma.user.findFirst({
-    where: { phone: { endsWith: from.slice(-10) } },
-    include: {
-      memberships: { where: { status: "ACTIVE" }, take: 1 },
-    },
-  });
+  const user = await findUserForInboundPhone(from);
 
   // Handle STOP / opt-out
   if (text === "stop" || text === "unsubscribe" || text === "opt out") {
@@ -136,31 +134,11 @@ async function handleIncomingMessage(message: any, contact: any) {
     return;
   }
 
-  // ─── Handle LINK — send next class join URL ───
-  if (text === "link" && user && user.memberships.length > 0) {
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "https://www.mukhamudra.com";
-    await sendCloudMessage(
-      from,
-      `Join from your dashboard 🧘\n\n${appUrl}/app\n\nJoin opens 15 minutes before class. See you soon! 🌿`,
-    );
+  if (user && user.memberships.length > 0) {
     return;
   }
 
-  // ─── Auto-reply: send once to anyone messaging for the first time ───
-  const alreadyReplied = await prisma.messageLog.findFirst({
-    where: {
-      to: from,
-      channel: "WHATSAPP",
-      OR: [
-        { body: "mukhamudra_cold_inquiry" },
-        {
-          body: "mm_pre_payment_info",
-          status: { in: ["SENT", "DELIVERED"] },
-        },
-      ],
-    },
-  });
+  const alreadyReplied = await hasPrePaymentWhatsAppBeenSent(from);
 
   if (!alreadyReplied) {
     await sendPrePaymentNotice({

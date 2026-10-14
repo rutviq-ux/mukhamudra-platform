@@ -32,6 +32,10 @@ import { prisma } from "@ru/db";
 import { createLogger } from "@ru/config";
 import { sendPrePaymentNotice } from "@ru/notifications";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  findUserForInboundPhone,
+  hasPrePaymentWhatsAppBeenSent,
+} from "@/lib/whatsapp-inbound";
 
 const log = createLogger("interakt-webhook");
 
@@ -163,11 +167,6 @@ async function handleMessageStatus(payload: MessageStatusPayload) {
   }
 }
 
-function phoneVariants(digits: string): string[] {
-  const local = digits.slice(-10);
-  return [...new Set([digits, `+${digits}`, local, `+91${local}`])];
-}
-
 function readCustomerReply(event: InteraktWebhookPayload): {
   phone: string;
   text: string;
@@ -206,23 +205,16 @@ async function handleInboundMessage(reply: { phone: string; text: string; name?:
 
   log.info({ phone: reply.phone }, "[Interakt Webhook] Inbound WhatsApp message received");
 
-  const alreadyReplied = await prisma.messageLog.findFirst({
-    where: {
-      channel: "WHATSAPP",
-      to: { in: phoneVariants(reply.phone) },
-      OR: [
-        { body: "mukhamudra_cold_inquiry" },
-        { body: "mm_pre_payment_info", status: { in: ["SENT", "DELIVERED"] } },
-      ],
-    },
-    select: { id: true },
-  });
-  if (alreadyReplied) return;
+  const user = await findUserForInboundPhone(reply.phone);
+  if (user && user.memberships.length > 0) {
+    log.info(
+      { phone: reply.phone, userId: user.id },
+      "[Interakt Webhook] Skipping pre-payment, active member",
+    );
+    return;
+  }
 
-  const user = await prisma.user.findFirst({
-    where: { phone: { endsWith: reply.phone.slice(-10) } },
-    select: { id: true, name: true },
-  });
+  if (await hasPrePaymentWhatsAppBeenSent(reply.phone)) return;
 
   await sendPrePaymentNotice({
     rawPhone: reply.phone,
