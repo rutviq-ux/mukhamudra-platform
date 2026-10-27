@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@ru/db";
 import { userUpdateSchema, createLogger } from "@ru/config";
-import { notifyWelcome, emitSequenceEvent } from "@ru/notifications";
+import {
+  notifyWelcome,
+  emitSequenceEvent,
+  sendPlanWelcomeForUser,
+  drainMmOutbox,
+} from "@ru/notifications";
 import { createAuthAction } from "@/lib/actions/safe-action";
 import { getPostHogServer } from "@/lib/posthog-server";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
@@ -114,6 +119,14 @@ export const updateUserProfile = createAuthAction("updateUserProfile", {
       syncPaidUserToSheet(updatedUser.id).catch((err) =>
         log.error({ err, userId: updatedUser.id }, "Failed to sync paid-user sheet"),
       );
+      sendPlanWelcomeForUser({ userId: updatedUser.id, waitForPhone: false })
+        .then(() => drainMmOutbox())
+        .catch((err) =>
+          log.error(
+            { err, userId: updatedUser.id },
+            "Failed to send plan welcome after phone save",
+          ),
+        );
     }
 
     return { user: updatedUser };
