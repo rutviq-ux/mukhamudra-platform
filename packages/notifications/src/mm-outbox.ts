@@ -18,10 +18,21 @@ const log = createLogger("mm-outbox");
 
 export const MM_OUTBOX_BATCH = 40;
 
+const WELCOME_WHATSAPP = new Set<string>([
+  MM.WELCOME_FACE_YOGA,
+  MM.WELCOME_PRANAYAMA,
+  MM.WELCOME_BUNDLE,
+]);
+
+export function isWelcomeWhatsAppBody(body: string): boolean {
+  return WELCOME_WHATSAPP.has(body);
+}
+
 export function isMmOutboxWhatsApp(body: string): boolean {
   return (
     body.startsWith("mm_no_live_session:") ||
-    body.startsWith("session-reminder:")
+    body.startsWith("session-reminder:") ||
+    isWelcomeWhatsAppBody(body)
   );
 }
 
@@ -109,11 +120,12 @@ async function drainOutboxWhatsApp(limit: number): Promise<number> {
       OR: [
         { body: { startsWith: "mm_no_live_session:" } },
         { body: { startsWith: "session-reminder:" } },
+        { body: { in: [...WELCOME_WHATSAPP] } },
       ],
     },
     orderBy: { createdAt: "asc" },
     take: limit,
-    include: { user: { select: { name: true } } },
+    include: { user: { select: { name: true, phone: true } } },
   });
 
   let sent = 0;
@@ -127,17 +139,57 @@ async function drainOutboxWhatsApp(limit: number): Promise<number> {
       continue;
     }
 
+    let phone = formatPhone(row.to);
+    if (!phone && row.user?.phone) {
+      phone = formatPhone(row.user.phone);
+      if (phone) {
+        await prisma.messageLog.update({
+          where: { id: row.id },
+          data: { to: row.user.phone },
+        });
+      }
+    }
+    if (!phone) {
+      if (isWelcomeWhatsAppBody(row.body)) {
+        const ageMs = Date.now() - row.createdAt.getTime();
+        if (ageMs > 24 * 60 * 60_000) {
+          await updateMessageStatus(row.id, "FAILED", {
+            error: "Phone never available for welcome WhatsApp",
+          });
+        } else {
+          await prisma.messageLog.update({
+            where: { id: row.id },
+            data: { error: "Waiting for phone on user" },
+          });
+        }
+        continue;
+      }
+      const retries = row.retryCount + 1;
+      if (retries >= 5) {
+        await updateMessageStatus(row.id, "FAILED", {
+          error: "Phone unusable",
+        });
+        await prisma.messageLog.update({
+          where: { id: row.id },
+          data: { retryCount: retries },
+        });
+        continue;
+      }
+      await prisma.messageLog.update({
+        where: { id: row.id },
+        data: {
+          retryCount: retries,
+          error: "Waiting for phone on user",
+        },
+      });
+      continue;
+    }
+
     const claimed = await prisma.messageLog.updateMany({
       where: { id: row.id, status: "QUEUED" },
       data: { status: "SENT", sentAt: new Date() },
     });
     if (claimed.count === 0) continue;
-
-    const phone = formatPhone(row.to);
-    if (!phone) {
-      await updateMessageStatus(row.id, "FAILED", { error: "Phone unusable" });
-      continue;
-    }
 
     const ok = await sendTemplate({
       phoneNumber: phone.local,
@@ -189,6 +241,12 @@ async function whatsAppPayload(
   | "drop"
 > {
   const name = firstName(userName);
+  if (isWelcomeWhatsAppBody(body)) {
+    return {
+      templateName: body,
+      bodyValues: [name],
+    };
+  }
   if (body.startsWith("mm_no_live_session:")) {
     const sessionId = body.slice("mm_no_live_session:".length).trim();
     const session = await prisma.session.findUnique({
@@ -209,6 +267,8 @@ async function whatsAppPayload(
       ],
     };
   }
+
+  if (!body.startsWith("session-reminder:")) return "drop";
 
   const sessionId = body.slice("session-reminder:".length);
   const session = await prisma.session.findUnique({

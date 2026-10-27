@@ -702,6 +702,7 @@ export async function notifyPaymentHealthWeekly(opts: {
 export async function sendPlanWelcome(opts: {
   userId: string;
   planSlug: string;
+  waitForPhone?: boolean;
 }): Promise<void> {
   const templateName = welcomeTemplateForSlug(opts.planSlug);
   if (!templateName) return;
@@ -738,6 +739,7 @@ export async function sendPlanWelcome(opts: {
   await sendPaymentWhatsApp({
     userId: opts.userId,
     planSlug: opts.planSlug,
+    waitForPhone: opts.waitForPhone,
   });
 
   if (emailAlreadySent) return;
@@ -754,19 +756,48 @@ export async function sendPlanWelcome(opts: {
   });
 }
 
+export async function sendPlanWelcomeForUser(opts: {
+  userId: string;
+  waitForPhone?: boolean;
+}): Promise<void> {
+  const membership = await prisma.membership.findFirst({
+    where: { userId: opts.userId, status: "ACTIVE" },
+    orderBy: { createdAt: "desc" },
+    select: { plan: { select: { slug: true } } },
+  });
+  if (!membership) return;
+
+  await sendPlanWelcome({
+    userId: opts.userId,
+    planSlug: membership.plan.slug,
+    waitForPhone: opts.waitForPhone ?? false,
+  });
+}
+
 async function sendPaymentWhatsApp(opts: {
   userId: string;
   planSlug?: string;
   planName?: string;
+  waitForPhone?: boolean;
 }): Promise<void> {
   const templateName =
     (opts.planSlug ? welcomeTemplateForSlug(opts.planSlug) : null) ??
     (opts.planName ? welcomeTemplateForPlanName(opts.planName) : null);
   if (!templateName) return;
 
-  await withOutboxLock(`mm-welcome-wa:${opts.userId}:${templateName}`, async () => {
+  const recipient = await resolveWhatsAppPhone(opts.userId, {
+    attempts: opts.waitForPhone === false ? 1 : 6,
+  });
+  if (!recipient) {
+    log.warn(
+      { userId: opts.userId, templateName },
+      "Queuing welcome WhatsApp without phone; outbox will retry after onboarding",
+    );
+  }
+
+  await withOutboxLock(`mm-welcome-wa:${opts.userId}:${templateName}`, async (db) => {
     const since = new Date(Date.now() - 24 * 60 * 60_000);
-    const alreadySent = await prisma.messageLog.findFirst({
+    const existing = await db.messageLog.findFirst({
       where: {
         userId: opts.userId,
         channel: "WHATSAPP",
@@ -774,31 +805,42 @@ async function sendPaymentWhatsApp(opts: {
         createdAt: { gte: since },
         status: { in: ["QUEUED", "SENT", "DELIVERED"] },
       },
-      select: { id: true },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, status: true, to: true },
     });
-    if (alreadySent) return;
 
-    const recipient = await resolveWhatsAppPhone(opts.userId);
-    if (!recipient) {
-      log.warn({ userId: opts.userId, templateName }, "Skipping payment WhatsApp, no phone");
+    if (existing?.status === "SENT" || existing?.status === "DELIVERED") return;
+
+    if (existing?.status === "QUEUED") {
+      if (recipient?.phone && existing.to !== recipient.phone) {
+        await db.messageLog.update({
+          where: { id: existing.id },
+          data: { to: recipient.phone, error: null, retryCount: 0 },
+        });
+      }
       return;
     }
 
-    await deliverInteraktTemplate({
-      rawPhone: recipient.phone,
-      logTo: recipient.phone,
-      userId: opts.userId,
-      templateName,
-      bodyValues: [firstName(recipient.name)],
-      logBody: templateName,
-    });
+    await createQueuedLogs(
+      [
+        {
+          channel: "WHATSAPP",
+          to: recipient?.phone || "",
+          userId: opts.userId,
+          body: templateName,
+        },
+      ],
+      db,
+    );
   });
 }
 
 async function resolveWhatsAppPhone(
   userId: string,
+  opts?: { attempts?: number },
 ): Promise<{ phone: string; name: string | null } | null> {
-  for (let attempt = 0; attempt < 4; attempt++) {
+  const attempts = Math.max(1, opts?.attempts ?? 6);
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, phone: true, email: true },
@@ -806,9 +848,9 @@ async function resolveWhatsAppPhone(
     if (user?.phone && formatPhone(user.phone)) {
       return { phone: user.phone, name: user.name };
     }
-    if (attempt === 0 && user?.email) {
+    if (user?.email) {
       const lead = await prisma.lead.findFirst({
-        where: { email: user.email },
+        where: { email: { equals: user.email, mode: "insensitive" } },
         orderBy: { createdAt: "desc" },
         select: { phone: true },
       });
@@ -816,7 +858,7 @@ async function resolveWhatsAppPhone(
         return { phone: lead.phone, name: user.name };
       }
     }
-    if (attempt < 3) {
+    if (attempt < attempts - 1) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
@@ -887,6 +929,12 @@ export async function enqueueRecentCancellations(): Promise<void> {
     if (match?.[1]) ids.add(match[1]);
   }
   for (const id of ids) {
+    const session = await prisma.session.findUnique({
+      where: { id },
+      select: { status: true, startsAt: true, updatedAt: true },
+    });
+    if (!session || session.status !== "CANCELLED") continue;
+    if (session.updatedAt < since && session.startsAt < since) continue;
     await notifyNoLiveSession(id);
   }
 }
@@ -923,7 +971,28 @@ export async function notifyNoLiveSession(sessionId: string): Promise<void> {
       time,
       legacyType,
     });
-    const recipients = [...(await sessionRecipients(session)).values()];
+    const allRecipients = [...(await sessionRecipients(session)).values()];
+    if (allRecipients.length === 0) return;
+
+    const bookedIds = new Set(session.bookings.map((booking) => booking.user.id));
+    const memberships = await prisma.membership.findMany({
+      where: {
+        userId: { in: allRecipients.map((user) => user.id) },
+        status: "ACTIVE",
+        periodStart: { lte: session.startsAt },
+        plan: {
+          product: {
+            type: { in: [session.product.type, "BUNDLE"] },
+          },
+        },
+      },
+      select: { userId: true },
+    });
+    const eligibleIds = new Set([
+      ...memberships.map((row) => row.userId),
+      ...bookedIds,
+    ]);
+    const recipients = allRecipients.filter((user) => eligibleIds.has(user.id));
     if (recipients.length === 0) return;
 
     const emailTemplate = await prisma.messageTemplate.findUnique({

@@ -20,6 +20,7 @@ import {
   sendEnrollRecordingsAddon,
   sendPlanWelcome,
   flushQueuedEmailsForUser,
+  drainMmOutbox,
   onPaymentCaptured,
   onSubscriptionActivated,
   onSubscriptionCancelled,
@@ -29,8 +30,42 @@ import { getSubscriptionPeriod } from "@/lib/memberships";
 import { getPostHogServer } from "@/lib/posthog-server";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
 import { syncUserMeetGroups } from "@/lib/sync-meet-group";
+import {
+  isPhoneUniqueViolation,
+  isValidStoredPhone,
+  normalizeStoredPhone,
+} from "@/lib/user-phone";
 
 const log = createLogger("api:razorpay:webhook");
+
+async function fillUserPhoneFromRazorpayContact(
+  userId: string,
+  contact: unknown,
+): Promise<void> {
+  const normalized = normalizeStoredPhone(
+    typeof contact === "string" ? contact : null,
+  );
+  if (!normalized || !isValidStoredPhone(normalized)) return;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { phone: true },
+  });
+  if (user?.phone) return;
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { phone: normalized },
+    });
+  } catch (error) {
+    if (!isPhoneUniqueViolation(error)) throw error;
+    log.warn(
+      { userId, phone: normalized },
+      "Razorpay contact phone already used by another user",
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   const env = getServerEnv();
@@ -283,6 +318,11 @@ async function handlePaymentCaptured(payload: any) {
       include: { plan: { include: { product: true } } },
     });
     if (order) {
+      await fillUserPhoneFromRazorpayContact(order.userId, payment.contact).catch(
+        (err) =>
+          log.error({ err, userId: order.userId }, "Failed to save Razorpay contact phone"),
+      );
+
       // Must await both before calling flushQueuedEmailsForUser.
       // They write to MessageLog and the flush reads from it; without
       // awaiting, the flush races ahead and finds nothing to send.
@@ -359,6 +399,9 @@ async function handlePaymentCaptured(payload: any) {
       // as the fallback for anything this flush can't deliver right away.
       flushQueuedEmailsForUser(order.userId).catch((err) =>
         log.error({ err }, "Failed to flush confirmation emails"),
+      );
+      drainMmOutbox().catch((err) =>
+        log.error({ err }, "Failed to drain welcome WhatsApp outbox"),
       );
 
       syncPaidUserToSheet(order.userId).catch((err) =>
@@ -546,6 +589,9 @@ async function handleSubscriptionActivated(payload: any) {
   await Promise.allSettled(emailPromises);
   flushQueuedEmailsForUser(membership.userId).catch((err) =>
     log.error({ err }, "Failed to flush subscription activation emails"),
+  );
+  drainMmOutbox().catch((err) =>
+    log.error({ err }, "Failed to drain welcome WhatsApp outbox"),
   );
 }
 

@@ -11,6 +11,8 @@ import {
   notifyRecordingAddonPurchased,
   queueWhatsAppGroupAdd,
   onSubscriptionActivated,
+  sendPlanWelcome,
+  drainMmOutbox,
 } from "@ru/notifications";
 import { syncPaidUserToSheet } from "@/lib/sync-paid-user-sheet";
 
@@ -254,15 +256,23 @@ async function handler(request: NextRequest) {
 
           // Notify (non-recording orders)
           if (order.plan.slug !== "recording-addon") {
-            notifyPaymentSuccess({
-              userId: order.userId,
-              orderId: order.id,
-              planName: order.plan.name,
-              planSlug: order.plan.slug,
-              amount: (order.amountPaise / 100).toLocaleString("en-IN"),
-            }).catch((err) =>
-              log.error({ err }, "Sync: failed to queue payment notification"),
-            );
+            Promise.allSettled([
+              notifyPaymentSuccess({
+                userId: order.userId,
+                orderId: order.id,
+                planName: order.plan.name,
+                planSlug: order.plan.slug,
+                amount: (order.amountPaise / 100).toLocaleString("en-IN"),
+              }),
+              sendPlanWelcome({
+                userId: order.userId,
+                planSlug: order.plan.slug,
+              }),
+            ])
+              .then(() => drainMmOutbox())
+              .catch((err) =>
+                log.error({ err }, "Sync: failed to queue payment / welcome notices"),
+              );
           }
         } else {
           // Check if all payments failed
